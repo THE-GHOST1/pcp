@@ -15,7 +15,7 @@
 #include </home/prajwal/hiredis/adapters/libuv.h>
 
 #define PORT 44323
-
+struct sockaddr_in addr;
 typedef struct {
     uv_write_t req;
     uv_buf_t buf;
@@ -23,6 +23,18 @@ typedef struct {
 
 static uint64_t data_cntr = 0;
 
+struct KeyNode{
+    sds key;
+    struct KeyNode* next;
+    struct KeyNode* prev;
+};
+
+struct ClientRequestData {
+    sds ip;
+    uv_tcp_t *client;
+    struct KeyNode* keys;
+
+};
 
 
 sds ProcessRedisReply(redisReply *reply)
@@ -125,6 +137,9 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 }
 
 static void after_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+    struct ClientRequestData *data;
+
+    data = handle->data;
     redisReader *reader;
     void *reply;
     int ret;
@@ -202,7 +217,18 @@ static void on_connection(uv_stream_t* server, int status) {
     r = uv_tcp_init(uv_default_loop(), stream);
     assert(r == 0);
     stream->data = server;
+    struct ClientRequestData* data=malloc(sizeof(*data));
+    stream->data=data;
+    data->client=stream;
     r = uv_accept(server, (uv_stream_t*)stream);
+    struct sockaddr_in name;
+    int namelen = sizeof(name);
+    uv_tcp_getpeername(&stream, (struct sockaddr*) &name, &namelen);
+    char addr[16];
+    char client_ip[32];
+    uv_inet_ntop(AF_INET, &name.sin_addr, addr, sizeof(addr));
+    snprintf(client_ip, sizeof(client_ip), "%s:%d", addr, ntohs(name.sin_port));
+    data->ip=sdsnew(client_ip);
     assert(r == 0);
     r = uv_read_start((uv_stream_t*)stream, alloc_cb, after_read);
     assert(r == 0);
@@ -210,7 +236,7 @@ static void on_connection(uv_stream_t* server, int status) {
 
 static int tcp_echo_server() {
     uv_tcp_t* tcp_server;
-    struct sockaddr_in addr;
+
     int r;
     r = uv_ip4_addr("0.0.0.0", PORT, &addr);
     assert(r == 0);

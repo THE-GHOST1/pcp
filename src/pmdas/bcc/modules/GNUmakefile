@@ -19,11 +19,14 @@ IAM       = bcc
 MODULEDIR = $(PCP_PMDAS_DIR)/$(IAM)/modules
 PYSCRIPTS = $(shell echo *.python)
 EBPFPROGS = $(shell echo *.bpf)
+SUBDIRS  = fs
 
 include $(BUILDRULES)
 
-default_pcp default:	$(SCRIPTS) $(BCC_EBPF)
+default_pcp default:	$(SCRIPTS) $(BCC_EBPF) $(SUBDIRS)
+	$(SUBDIRS_MAKERULE)
 
-install_pcp install:	default
+install_pcp install:	default $(SUBDIRS)
+	$(SUBDIRS_MAKERULE)
 	$(INSTALL) -m 755 -d $(MODULEDIR)
 	$(INSTALL) -m 644 $(EBPFPROGS) $(PYSCRIPTS) $(MODULEDIR)

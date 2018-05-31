@@ -1,3 +1,8 @@
+env:
+  global:
+    # encrypted COVERITY_SCAN_TOKEN
+    - secure: "GZW9ij3PBUPLp4ksM5hcjoQUk5oPrI2Y90kQZA5ZEypPtodhKMiD+T+BDX3UTOfwSWUACDajqMlc6AYwbxrcIqPd6u4eNld3LQ7nAX4pF3i86C59A+xQP54+ezDDGA+HhKQQZIW4O7VP0uj0GbWk9sF8mBrFtnSoKgbXn+y7FcE="
+
 sudo: required
 
 services:
@@ -5,9 +10,22 @@ services:
 
 language: c
 
+addons:
+  coverity_scan:
+    project:
+      name: "performancecopilot/pcp"
+      description: "Performance Co-Pilot is a system performance analysis toolkit."
+    notification_email: pcp@groups.io
+    build_command_prepend: "./configure"
+    build_command: "make"
+    branch_pattern: master
+
 before_install:
+  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - sudo apt-get -qq update
   - sudo apt-get install -y linux-headers-$(uname -r)
+  - sudo pip install pylint
+  - pylint --rcfile=.pylintrc $(find src/pmdas/bcc -name '*.python')
   - docker build -f build/containers/travis-ci/Dockerfile -t pcp-qa .
 
 before_script:
@@ -19,7 +37,7 @@ script:
   - docker exec pcp-qa bash -c 'cd /var/lib/pcp/testsuite && ./check -g pmda.bcc'
 
 after_failure:
-  - docker exec pcp-qa bash -c 'tail -vn +1 /var/lib/pcp/testsuite/*.out.bad'
+  - docker exec pcp-qa bash -c 'tail -vn +1 $(for bad in /var/lib/pcp/testsuite/*.out.bad; do echo $bad ${bad/out.bad/full}; done)'
 
 after_script:
   - docker exec pcp-qa bash -c 'tail -vn +1 $(find /var/log/pcp -name "*.log")'

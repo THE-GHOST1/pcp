@@ -5,6 +5,8 @@
 
 struct sockaddr_in req_addr;
 
+
+
 void on_close(uv_handle_t * handle)
 {
 	printf("\nclosed!! \n");
@@ -53,6 +55,7 @@ void on_connect(uv_connect_t *req, int status)
 	uv_buf_t buf = uv_buf_init(buffer,sizeof(buffer));
 	buf.len = len;
 	buf.base = message;
+
 	printf("buf.base : %s",buf.base);
 	uv_stream_t* tcp = req->handle;
 	uv_write_t write_req;

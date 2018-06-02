@@ -13,8 +13,14 @@
 #include </home/prajwal/hiredis/sds.h>
 #include </home/prajwal/hiredis/async.h>
 #include </home/prajwal/hiredis/adapters/libuv.h>
+//#include <../libpcp_web/src/redis.h>
+//#include <../libpcp_web/src/net.h>
+//#include <../libpcp_web/src/sdsalloc.h>
+//#include <../libpcp_web/src/libuv.h>
 
-#define PORT 44323 /* TODO make port dynamic */
+
+
+#define PORT 44323 /* TODO dynamic port */
 
 struct sockaddr_in addr;
 
@@ -35,14 +41,22 @@ struct ClientRequestData {
     redisAsyncContext *redisContext;
     sds ip;
     uv_tcp_t *client;
-    struct KeyNode *keys;
-    int64_t ClientID;
+    sds keys; //nope
+    // struct KeyNode *keys;
+    int64_t ClientID; //Internal implementaion
 };
 
 FILE *fp;
 
+static char* logfile = "/home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.log";
+
 sds
 ProcessRedisReply(redisReply *reply) {
+
+   /*
+    * Returns a sds string of Redis reply in RESP format.
+   */
+
     sds             end_line;
     sds             sdsbuffer;
     end_line = sdsempty();
@@ -119,6 +133,7 @@ after_write(uv_write_t *req, int status) {
     fprintf(stderr, "uv_write error: %s\n", uv_strerror(status));
     if (status == UV_ECANCELED) return;
     assert(status == UV_EPIPE);
+
     uv_close((uv_handle_t *) req->handle, on_close_cb);
 }
 
@@ -152,7 +167,56 @@ getCallback(redisAsyncContext *c, void *r, void *privdata){
     printf("%s",s);
     wr->buf = uv_buf_init(s, sdslen(s));
     r = uv_write(&wr->req, data->client, &wr->buf, 1, after_write);
+    sdsfree(s);
 }
+
+static void
+getCallback2(redisAsyncContext *c, void *r, void *privdata){
+    struct ClientRequestData    *data;
+    int                         len;
+    int                         i;
+    int                         j;
+    sds sdsbuffer;
+    sdsbuffer = sdsempty();
+    redisReply *reply = r;
+    write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
+
+    if (reply == NULL) return;
+
+    data = c->data;
+
+    for (i = 0; reply != NULL && i < ((redisReply *) reply)->elements; i++) {
+        sdsbuffer = sdscat(sdsbuffer, ((redisReply *) reply)->element[i]->str);
+        if (i != (((redisReply *) reply)->elements) - 1) sdsbuffer = sdscat(sdsbuffer, " ");
+    }
+
+    data->keys = sdsempty();
+    data->keys = sdscatsds(data->keys , sdsbuffer);
+    printf("keys in clients %s\n",data->keys);
+    sdsfree(sdsbuffer);
+//    for (i = 0; i < ((redisReply *) reply)->elements; i++) {
+//          data->keys[i] = ((redisReply *) reply->element[i])->str;
+//        data->keys->key = sdsempty();
+//        data->keys->key = sdscat(data->keys->key, ProcessRedisReply((redisReply *) reply->element[i]));
+//        data->keys->key = data->keys->next;
+//        data->keys->next = data->keys->key ;
+//        sdsbuffer = sdscat(sdsbuffer, ProcessRedisReply((redisReply *) reply->element[i]));
+//    }
+//    for(i=0;i<5;i++)
+//    {
+//        //printf("Keys in client %d : %s \n",data->ClientID,data->keys[i]);
+//    }
+//    wr->buf = uv_buf_init(s, sdslen(s));
+//    r = uv_write(&wr->req, data->client, &wr->buf, 1, after_write);
+
+}
+
+
+static void
+GetClienKeys( struct ClientRequestData  *data,sds getkeysds){
+    redisAsyncCommand(data->redisContext, getCallback2, (char*)"end-1",getkeysds);
+}
+
 static void
 after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     struct ClientRequestData            *data;
@@ -205,14 +269,14 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     char *command = malloc(sdslen(sdsbuffer));
     strcpy(command, sdsbuffer);
 
-    getkeysds = sdscat(getkeysds,"COMMAND GETKEYS");
+    getkeysds = sdscat(getkeysds,"COMMAND GETKEYS ");
     getkeysds = sdscat(getkeysds, command);
 
-    //redisAsyncCommand(data->redisContext, getCallback, (char*)"end-1",getkeysds);
+    GetClienKeys(data, getkeysds);
 
     redisAsyncCommand(data->redisContext, getCallback, (char*)"end-1",command);
 
-    fp=fopen("/home/prajwal/CLionProjects/pcp/src/pmproxy2/LOG.txt","a+");
+    fp=fopen(logfile,"a+");
     fputs(command,fp);
     fputs("\n",fp);
     fclose(fp);
@@ -223,7 +287,7 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 
 static void
 alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-    buf->base = malloc(suggested_size);
+    buf->base = malloc(suggested_size); //what size? break the msg (64 bit)
     assert(buf->base != NULL);
     buf->len = suggested_size;
 }
@@ -236,6 +300,7 @@ connectCallback(const redisAsyncContext *c, int status) {
     }
     printf("Connected...\n");
 }
+
 static void
 disconnectCallback(const redisAsyncContext *c, int status) {
     if (status != REDIS_OK)
@@ -245,6 +310,7 @@ disconnectCallback(const redisAsyncContext *c, int status) {
     }
     printf("Disconnected...\n");
 }
+
 static void
 on_connection(uv_stream_t *server, int status) {
     uv_tcp_t            *stream;
@@ -294,25 +360,21 @@ on_connection(uv_stream_t *server, int status) {
     assert(r == 0);
 }
 
-static int tcp_echo_server() {
+/*
+ * Starting the server. Accepts multiple async requests
+ * unpon succesful initialization returns 0
+*/
+static int
+init_server() {
     uv_tcp_t        *tcp_server;
     int             r;
 
-    r = uv_ip4_addr("0.0.0.0", PORT, &addr);
-    assert(r == 0);
-
+    uv_ip4_addr("0.0.0.0", PORT, &addr);
     tcp_server = (uv_tcp_t *) malloc(sizeof(*tcp_server));
-    assert(tcp_server != NULL);
-
-    r = uv_tcp_init(uv_default_loop(), tcp_server);
-    assert(r == 0);
-
-    r = uv_tcp_bind(tcp_server, (const struct sockaddr *) &addr, 0);
-    assert(r == 0);
-
+    uv_tcp_init(uv_default_loop(), tcp_server);
+    uv_tcp_bind(tcp_server, (const struct sockaddr *) &addr, 0);
     uv_tcp_keepalive(tcp_server, 1, 50);
     uv_tcp_simultaneous_accepts(tcp_server, 1);
-
     r = uv_listen((uv_stream_t *) tcp_server, SOMAXCONN, on_connection);
     if (r) {
         fprintf(stderr, "LISTEN ERROR %s\n", uv_strerror(r));
@@ -321,14 +383,11 @@ static int tcp_echo_server() {
     return 0;
 }
 
-int main() {
+int
+main() {
     int         r;
-
-    r = tcp_echo_server();
+    r = init_server();
     assert(r == 0);
-
-    r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-    assert(r == 0);
-
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     return 0;
 }

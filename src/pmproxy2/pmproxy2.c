@@ -15,8 +15,70 @@
 #include </home/prajwal/hiredis/adapters/libuv.h>
 
 struct sockaddr_in bind_addr;
-static redisAsyncContext *c;
-uv_tcp_t * client;
+redisAsyncContext *c;
+static uv_tcp_t * client;
+
+sds ProcessRedisReply(redisReply *reply)
+{
+    sds end_line;
+    end_line = sdsempty();
+    end_line = sdscat(end_line, "\r\n");
+    sds sdsbuffer;
+    sdsbuffer = sdsempty();
+    if (reply == NULL) sdsbuffer;
+    switch((reply->type))
+    {
+        case 1 : {
+            sds sometempbuf = sdsfromlonglong((strlen(reply->str)));
+            sdsbuffer = sdscat(sdsbuffer, "$");
+            sdsbuffer = sdscat(sdsbuffer, sometempbuf);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            sdsbuffer = sdscat(sdsbuffer, reply->str);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            sdsfree(sometempbuf);
+            return sdsbuffer;
+        }
+        case 2 :{
+            int i;
+            int len;
+            char *cmd;
+            sds tempbuffer;
+            tempbuffer = sdsempty();
+            for(i=0;i<((redisReply*)reply)->elements;i++){
+                tempbuffer = sdscat(tempbuffer,ProcessRedisReply((redisReply *) reply->element[i]));
+                tempbuffer = sdscat(tempbuffer, " ");
+            }
+            len = redisFormatCommand(&cmd,tempbuffer);
+            sdsbuffer = sdscat(sdsbuffer , cmd);
+            sdsfree(tempbuffer);
+            free(cmd);
+            return sdsbuffer;
+        }
+        case 3: {
+            sds sometempbuf = sdsfromlonglong(reply->integer);
+            sdsbuffer = sdscat(sdsbuffer,":");
+            sdsbuffer = sdscat(sdsbuffer,sometempbuf);
+            sdsbuffer = sdscat(sdsbuffer,end_line);
+            sdsfree(sometempbuf);
+            return sdsbuffer;
+        }
+        case 4 : {
+            sdsbuffer = sdscat(sdsbuffer,"");
+            return sdsbuffer;
+        }
+        case 5: {
+            sdsbuffer = sdscat(sdsbuffer,reply->str);
+            return sdsbuffer;
+        }
+        default: {
+            //ERROR_REPLY
+            sdsbuffer = sdscat(sdsbuffer,"-");
+            sdsbuffer = sdscat(sdsbuffer,reply->str);
+            return sdsbuffer;
+        }
+    }
+}
+
 void on_write_end(uv_write_t *req, int status)
 {
     if(status < 0)
@@ -36,65 +98,21 @@ void getCallback(redisAsyncContext *c, void *r, void *privdata)
 	sds sdsbuffer;
 	sdsbuffer = sdsempty();
 	if (reply == NULL) return;
-
-    switch((reply->type))
-    {
-        case 1 : {
-            //REDIS_REPLY_STRING
-            sds sometempbuf = sdsfromlonglong((strlen(reply->str)));
-            sdsbuffer = sdscat(sdsbuffer, "$");
-            sdsbuffer = sdscat(sdsbuffer, sometempbuf);
-            sdsbuffer = sdscat(sdsbuffer,"\r\n");
-            sdsbuffer = sdscat(sdsbuffer,reply->str);
-            sdsbuffer = sdscat(sdsbuffer,"\r\n");
-            sdsfree(sometempbuf);
-            break;
-        }
-        case 2 :{
-            char *cmd;
-            sds tempbuffer;
-            tempbuffer = sdsempty();
-            for(i=0;i<((redisReply*)reply)->elements;i++){
-                tempbuffer = sdscat(tempbuffer, ((redisReply*)reply)->element[i]->str);
-                tempbuffer = sdscat(tempbuffer, " ");
-            }
-            len = redisFormatCommand(&cmd,tempbuffer);
-            sdsbuffer = sdscat(sdsbuffer , cmd);
-            sdsfree(tempbuffer);
-            free(cmd);
-            break;
-        }
-        case 3 : {
-            sds sometempbuf = sdsfromlonglong(reply->integer);
-            sdsbuffer = sdscat(sdsbuffer,":");
-            sdsbuffer = sdscat(sdsbuffer,sometempbuf);
-            sdsbuffer = sdscat(sdsbuffer,"\r\n");
-            sdsfree(sometempbuf);
-            break;
-        }
-        case 5 : {
-            sdsbuffer = sdscat(sdsbuffer,reply->str);
-            break;
-        }
-        default:
-            //ERROR_REPLY
-            sdsbuffer = sdscat(sdsbuffer,"-");
-            sdsbuffer = sdscat(sdsbuffer,reply->str);
-    }
-
+    sdsbuffer = ProcessRedisReply(reply);
     printf("\nsds_buffer %s\n",sdsbuffer);
 
     uv_write_t write_req;
     int buf_count = 1;
-    char* msg = "hi";
-    char buffer[100];
-    uv_buf_t buf = uv_buf_init(buffer,strlen(buffer));
-    buf.len = strlen(msg);
-    buf.base = msg;
-
+    char* message="+OK\r\n";
+    uv_buf_t buf = uv_buf_init(message,strlen(message)+1);
     uv_write(&write_req, (uv_stream_t*)client, &buf,1, on_write_end);
     sdsfree(sdsbuffer);
-    redisAsyncDisconnect(c);
+	/*uv_write_t *write_req=malloc(sizeof(uv_write_t));;
+	int buf_count = 1;
+	char* message=strdup("+OK\r\n");
+	uv_buf_t buf_rep = uv_buf_init(message,strlen(message));
+	uv_write(write_req, (uv_stream_t*)client, &buf_rep,1, on_write_end);*/
+	//redisAsyncDisconnect(c);
 }
 
 void connectCallback(const redisAsyncContext *c, int status) 
@@ -120,8 +138,8 @@ void disconnectCallback(const redisAsyncContext *c, int status)
 void echo_read(uv_stream_t *client,ssize_t nread,uv_buf_t* buf)
 {
 	redisReader *reader;
-    	void *reply;
-    	int ret;
+	void *reply;
+	int ret;
 	int i;
 	if(nread < 0)
 	{
@@ -142,13 +160,32 @@ void echo_read(uv_stream_t *client,ssize_t nread,uv_buf_t* buf)
 	assert(ret == REDIS_OK);
 	sds sdsbuffer;
 	sdsbuffer = sdsempty();
-	for(i=0;i<((redisReply*)reply)->elements;i++)
+	for(i=0;reply != NULL && i<((redisReply*)reply)->elements;i++)
 	{
 		sdsbuffer = sdscat(sdsbuffer, ((redisReply*)reply)->element[i]->str);
 		if(i != (((redisReply*)reply)->elements)-1) sdsbuffer = sdscat(sdsbuffer, " ");		
 	}
-	redisAsyncCommand(c, getCallback, (char*)"end-1",sdsbuffer);
-	sdsfree(sdsbuffer);
+	//char* command="PING";
+	//redisAsyncCommand(c,getCallback,(char*)"end-1",sdsbuffer);
+	char* command="PING";
+	redisContext *c = redisConnect("127.0.0.1", 6379);
+	redisReply *reply_1 = (redisReply *)redisCommand(c, command);
+	int len;
+	sdsbuffer = sdsempty();
+	if(reply_1!=NULL){
+		sdsbuffer = ProcessRedisReply(reply_1);
+		printf("\nsds_buffer %s\n",sdsbuffer);
+	}
+	freeReplyObject(reply_1);
+	redisFree(c);
+	uv_write_t write_req;
+	int buf_count = 1;
+	char* message="+OK\r\n";
+	uv_buf_t buf_rep = uv_buf_init(message,strlen(message)+1);
+	uv_write(&write_req, (uv_stream_t*)client, &buf_rep,1, on_write_end);
+//	sdsfree(sdsbuffer);
+//	sleep(5);
+//	sdsfree(sdsbuffer);
 	return;
 }
 
@@ -164,13 +201,18 @@ void on_new_connection(uv_stream_t *server, int status)
 	{
 		fprintf(stderr, "New connection error %s\n", uv_strerror(status));
 	 	return;
-	}					
+	}
+	/*uv_loop_t* loop_redis = uv_loop_new();
+	c = redisAsyncConnect("127.0.0.1", 6379);
+	redisLibuvAttach(c,loop_redis);
+	redisAsyncSetConnectCallback(c,connectCallback);
+	redisAsyncSetDisconnectCallback(c,disconnectCallback);
+	uv_run(loop_redis,UV_RUN_DEFAULT);*/
 	client = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
 	uv_tcp_init(uv_default_loop(), client);
 	if (uv_accept(server, (uv_stream_t*) client) == 0)
 	{
 		uv_read_start((uv_stream_t*) client, alloc_buffer, echo_read);
-
 	}
 	else
 	{
@@ -180,19 +222,20 @@ void on_new_connection(uv_stream_t *server, int status)
 
 int main()
 {
+	uv_loop_t* loop_tcp = uv_default_loop();
+
 	signal(SIGPIPE, SIG_IGN);
-	
-	c = redisAsyncConnect("127.0.0.1", 6379);
-	redisLibuvAttach(c,uv_default_loop());
-    redisAsyncSetConnectCallback(c,connectCallback);
-	if (c->err) 
+
+
+
+	/*if (c->err)
 	{
 	        printf("Error: %s\n", c->errstr);
 	        return 1;
  	}
-	
+	*/
 	uv_tcp_t server;
-	uv_tcp_init(uv_default_loop(),&server);
+	uv_tcp_init(loop_tcp,&server);
 	uv_tcp_keepalive(&server,1,50);
 	uv_tcp_simultaneous_accepts(&server,1);
 	uv_ip4_addr("0.0.0.0",44323,&bind_addr);
@@ -203,7 +246,7 @@ int main()
 		fprintf(stderr,"LISTEN ERROR %s\n",uv_strerror(r));
 		return 1;
 	}
-	redisAsyncSetDisconnectCallback(c,disconnectCallback);	
-	uv_run(uv_default_loop(),UV_RUN_DEFAULT);
+
+	uv_run(loop_tcp,UV_RUN_DEFAULT);
 	return 0;
 }

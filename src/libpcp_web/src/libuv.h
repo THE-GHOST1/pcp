@@ -36,10 +36,11 @@
 #ifndef __PMPROXY_LIBUV_H__
 #define __PMPROXY_LIBUV_H__
 
+#include "uv.h"
 #include "stdlib.h"
 #include "redis.h"
 #include "string.h"
-#include "uv.h"
+
 
 typedef struct redisLibuvEvents {
     redisAsyncContext* context;

@@ -32,10 +32,10 @@
 #ifndef SERIES_REDIS_H
 #define SERIES_REDIS_H
 
-#include "sds.h"
 #include <stdarg.h>
 #include <stdint.h>
 #include <sys/time.h>
+#include "sds.h"
 
 #define REDIS_ERR -1
 #define REDIS_OK   0

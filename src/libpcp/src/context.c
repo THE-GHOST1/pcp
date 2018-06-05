@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Red Hat.
+ * Copyright (c) 2012-2018 Red Hat.
  * Copyright (c) 2007-2008 Aconex.  All Rights Reserved.
  * Copyright (c) 1995-2002,2004,2006,2008 Silicon Graphics, Inc.  All Rights Reserved.
  * 
@@ -1002,10 +1002,15 @@ pmNewContext(int type, const char *name)
 
     PM_INIT_LOCKS();
 
-    if (PM_CONTEXT_LOCAL == (type & PM_CONTEXT_TYPEMASK) &&
-	PM_MULTIPLE_THREADS(PM_SCOPE_DSO_PMDA)) {
-	/* Local context requires single-threaded applications */
-	sts = PM_ERR_THREAD;
+    if (PM_CONTEXT_LOCAL == (type & PM_CONTEXT_TYPEMASK)) {
+	if (PM_MULTIPLE_THREADS(PM_SCOPE_DSO_PMDA)) {
+	    /* Local context requires single-threaded applications */
+	    sts = PM_ERR_THREAD;
+	    goto pmapi_return;
+	}
+    } else if (name == NULL) {
+	/* Allow NULL name only in local context mode of operation */
+	sts = PM_ERR_NOCONTEXT;
 	goto pmapi_return;
     }
 
@@ -1167,10 +1172,8 @@ INIT_CONTEXT:
     }
     else {
 	/* bad type */
-	if (pmDebugOptions.context) {
-	    fprintf(stderr, "pmNewContext(%d, %s): illegal type\n",
-		    type, name);
-	}
+	if (pmDebugOptions.context)
+	    fprintf(stderr, "pmNewContext(%d, %s): illegal type\n", type, name);
 	sts = PM_ERR_NOCONTEXT;
 	goto pmapi_return;
     }
@@ -1183,14 +1186,15 @@ INIT_CONTEXT:
 
     /* return the handle to the new (current) context */
     if (pmDebugOptions.context) {
-	fprintf(stderr, "pmNewContext(%d, %s) -> %d\n", type, name, PM_TPD(curr_handle));
+	fprintf(stderr, "pmNewContext(%d, %s) -> %d\n", type,
+			name ? name : "NULL", PM_TPD(curr_handle));
 	__pmDumpContext(stderr, PM_TPD(curr_handle), PM_INDOM_NULL);
     }
 
     /*
      * Bind defined metrics if any ..., after the new context is in place.
      *
-     * Need to lock context because routines caled from _dmopencontext()
+     * Need to lock context because routines called from _dmopencontext()
      * may assume the context is locked.
      */
     PM_LOCK(new->c_lock);
@@ -1226,7 +1230,7 @@ FAILED_LOCKED:
     PM_TPD(curr_ctxp) = old_curr_ctxp;
     if (pmDebugOptions.context)
 	fprintf(stderr, "pmNewContext(%d, %s) -> %d, curr_handle=%d\n",
-	    type, name, sts, PM_TPD(curr_handle));
+	    type, name ? name : "NULL", sts, PM_TPD(curr_handle));
     PM_UNLOCK(contexts_lock);
 
 pmapi_return:

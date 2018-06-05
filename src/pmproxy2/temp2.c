@@ -20,7 +20,7 @@
 
 
 
-#define PORT 44323 /* TODO dynamic port */
+#define PORT 44322 /* TODO dynamic port */
 
 struct sockaddr_in addr;
 

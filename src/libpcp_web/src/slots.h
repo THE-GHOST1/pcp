@@ -22,6 +22,10 @@
 typedef struct redisSlotServer {
     sds			hostspec;	/* hostname:port or unix socket file */
     redisContext	*redis;
+
+    redisAsyncContext *asyncredis;
+
+
 } redisSlotServer;
 
 typedef struct redisSlotRange {
@@ -34,6 +38,8 @@ typedef struct redisSlotRange {
 } redisSlotRange;
 
 typedef struct redisSlots {
+
+    redisAsyncContext *asynccontext;
     redisContext	*control;	/* initial Redis context connection */
     sds			hostspec;	/* control socket host specification */
     struct timeval	timeout;	/* system wide Redis timeout setting */

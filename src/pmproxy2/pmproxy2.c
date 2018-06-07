@@ -13,6 +13,7 @@
 #include </home/prajwal/hiredis/sds.h>
 #include </home/prajwal/hiredis/async.h>
 #include </home/prajwal/hiredis/adapters/libuv.h>
+#include </home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h>
 //#include <../libpcp_web/src/redis.h>
 //#include <../libpcp_web/src/net.h>
 //#include <../libpcp_web/src/sdsalloc.h>
@@ -20,7 +21,7 @@
 
 
 
-#define PORT 44322 /* TODO dynamic port */
+#define PORT 44323
 
 struct sockaddr_in addr;
 
@@ -31,19 +32,11 @@ typedef struct {
 
 int64_t ClientCounter = 0;
 
-struct KeyNode {
-    sds key;
-    struct KeyNode *next;
-    struct KeyNode *prev;
-};
-
 struct ClientRequestData {
     redisAsyncContext *redisContext;
     sds ip;
     uv_tcp_t *client;
-    sds keys; //nope
-    // struct KeyNode *keys;
-    int64_t ClientID; //Internal implementaion
+    int64_t ClientID;
 };
 
 FILE *fp;
@@ -151,14 +144,29 @@ after_shutdown(uv_shutdown_t *req, int status) {
 }
 
 static void
+getcallback2(redisAsyncContext *c, void *r, void *privdata){
+    int               len;
+    int               i;
+    redisReply        *reply = r;
+    sds               getreply;
+
+    getreply    =     sdsempty();
+
+    getreply = ProcessRedisReply(reply);
+    printf("reply  : %s",getreply);
+    int numofcommands = (getreply[1] - '0');
+    sdsfree(getreply);
+}
+
+static void
 getCallback(redisAsyncContext *c, void *r, void *privdata){
     struct ClientRequestData    *data;
     int                         len;
     int                         i;
 
-    sds s = sdsempty();
-    redisReply *reply = r;
-    write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
+    sds             s;
+    redisReply      *reply = r;
+    write_req_t     *wr = (write_req_t *) malloc(sizeof(*wr));
 
     if (reply == NULL) return;
 
@@ -168,53 +176,6 @@ getCallback(redisAsyncContext *c, void *r, void *privdata){
     wr->buf = uv_buf_init(s, sdslen(s));
     r = uv_write(&wr->req, data->client, &wr->buf, 1, after_write);
     sdsfree(s);
-}
-
-static void
-getCallback2(redisAsyncContext *c, void *r, void *privdata){
-    struct ClientRequestData    *data;
-    int                         len;
-    int                         i;
-    int                         j;
-    sds sdsbuffer;
-    sdsbuffer = sdsempty();
-    redisReply *reply = r;
-    write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
-
-    if (reply == NULL) return;
-
-    data = c->data;
-
-    for (i = 0; reply != NULL && i < ((redisReply *) reply)->elements; i++) {
-        sdsbuffer = sdscat(sdsbuffer, ((redisReply *) reply)->element[i]->str);
-        if (i != (((redisReply *) reply)->elements) - 1) sdsbuffer = sdscat(sdsbuffer, " ");
-    }
-
-    data->keys = sdsempty();
-    data->keys = sdscatsds(data->keys , sdsbuffer);
-    printf("keys in clients %s\n",data->keys);
-    sdsfree(sdsbuffer);
-//    for (i = 0; i < ((redisReply *) reply)->elements; i++) {
-//          data->keys[i] = ((redisReply *) reply->element[i])->str;
-//        data->keys->key = sdsempty();
-//        data->keys->key = sdscat(data->keys->key, ProcessRedisReply((redisReply *) reply->element[i]));
-//        data->keys->key = data->keys->next;
-//        data->keys->next = data->keys->key ;
-//        sdsbuffer = sdscat(sdsbuffer, ProcessRedisReply((redisReply *) reply->element[i]));
-//    }
-//    for(i=0;i<5;i++)
-//    {
-//        //printf("Keys in client %d : %s \n",data->ClientID,data->keys[i]);
-//    }
-//    wr->buf = uv_buf_init(s, sdslen(s));
-//    r = uv_write(&wr->req, data->client, &wr->buf, 1, after_write);
-
-}
-
-
-static void
-GetClienKeys( struct ClientRequestData  *data,sds getkeysds){
-    redisAsyncCommand(data->redisContext, getCallback2, (char*)"end-1",getkeysds);
 }
 
 static void
@@ -229,10 +190,12 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     write_req_t                         *wr;
     uv_shutdown_t                       *req;
     sds                                 sdsbuffer;
-    sds                                 getkeysds;
+    sds                                 keys;
+
     if (nread <= 0 && buf->base != NULL) {
         free(buf->base);
     }
+
     if (nread == 0) return;
 
     if (nread < 0) {
@@ -259,29 +222,29 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     assert(ret == REDIS_OK);
 
     sdsbuffer = sdsempty();
-    getkeysds = sdsempty();
+    keys = sdsempty();
+   // sdsbuffer = sdscat(sdsbuffer,"COMMAND GETKEYS ");
 
     for (i = 0; reply != NULL && i < ((redisReply *) reply)->elements; i++) {
         sdsbuffer = sdscat(sdsbuffer, ((redisReply *) reply)->element[i]->str);
         if (i != (((redisReply *) reply)->elements) - 1) sdsbuffer = sdscat(sdsbuffer, " ");
     }
     printf("Input command : %s\n", sdsbuffer);
-    char *command = malloc(sdslen(sdsbuffer));
+    char *command = malloc(sdslen(sdsbuffer)+1);
     strcpy(command, sdsbuffer);
 
-    getkeysds = sdscat(getkeysds,"COMMAND GETKEYS ");
-    getkeysds = sdscat(getkeysds, command);
+    keys = GetCommandKey(command);
 
-    GetClienKeys(data, getkeysds);
-
+    printf("Key for the command %s is %s \n",sdsbuffer,keys);
     redisAsyncCommand(data->redisContext, getCallback, (char*)"end-1",command);
 
     fp=fopen(logfile,"a+");
     fputs(command,fp);
     fputs("\n",fp);
     fclose(fp);
+    free(command);
+    sdsfree(keys);
     sdsfree(sdsbuffer);
-    sdsfree(getkeysds);
     freeReplyObject(reply);
 }
 
@@ -342,7 +305,9 @@ on_connection(uv_stream_t *server, int status) {
 
     stream->data = server;
     data->redisContext = c;
+
     c->data = data;
+
     stream->data = data;
     data->client = stream;
 

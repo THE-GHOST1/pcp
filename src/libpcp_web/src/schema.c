@@ -120,6 +120,7 @@ redis_submitcb(redisSlots *redis, const char *command, sds key, sds cmd,
 	redisGetReply(context, (void **)&reply);
 	callback(redis, reply, arg);
     }
+
     return 0;
 }
 

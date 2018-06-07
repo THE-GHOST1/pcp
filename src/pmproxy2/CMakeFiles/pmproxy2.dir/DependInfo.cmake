@@ -4,14 +4,14 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
-  "/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c" "/home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug/CMakeFiles/pmproxy2.dir/CommandKeys.c.o"
-  "/home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c" "/home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug/CMakeFiles/pmproxy2.dir/pmproxy2.c.o"
+  "/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c" "/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/pmproxy2.dir/CommandKeys.c.o"
+  "/home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c" "/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/pmproxy2.dir/pmproxy2.c.o"
   )
 set(CMAKE_C_COMPILER_ID "GNU")
 
 # The include file search paths:
 set(CMAKE_C_TARGET_INCLUDE_PATH
-  "../"
+  "."
   )
 
 # Targets to which this target links.

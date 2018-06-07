@@ -46,7 +46,7 @@ EQUALS = =
 CMAKE_SOURCE_DIR = /home/prajwal/CLionProjects/pcp/src/pmproxy2
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug
+CMAKE_BINARY_DIR = /home/prajwal/CLionProjects/pcp/src/pmproxy2
 
 # Include any dependencies generated for this target.
 include CMakeFiles/pmproxy2.dir/depend.make
@@ -58,17 +58,17 @@ include CMakeFiles/pmproxy2.dir/progress.make
 include CMakeFiles/pmproxy2.dir/flags.make
 
 CMakeFiles/pmproxy2.dir/pmproxy2.c.o: CMakeFiles/pmproxy2.dir/flags.make
-CMakeFiles/pmproxy2.dir/pmproxy2.c.o: ../pmproxy2.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/pmproxy2.dir/pmproxy2.c.o"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/pmproxy2.dir/pmproxy2.c.o   -c /home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c
+CMakeFiles/pmproxy2.dir/pmproxy2.c.o: pmproxy2.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/pmproxy2.dir/pmproxy2.c.o"
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/pmproxy2.dir/pmproxy2.c.o   -c /home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c
 
 CMakeFiles/pmproxy2.dir/pmproxy2.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/pmproxy2.dir/pmproxy2.c.i"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c > CMakeFiles/pmproxy2.dir/pmproxy2.c.i
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c > CMakeFiles/pmproxy2.dir/pmproxy2.c.i
 
 CMakeFiles/pmproxy2.dir/pmproxy2.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/pmproxy2.dir/pmproxy2.c.s"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c -o CMakeFiles/pmproxy2.dir/pmproxy2.c.s
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c -o CMakeFiles/pmproxy2.dir/pmproxy2.c.s
 
 CMakeFiles/pmproxy2.dir/pmproxy2.c.o.requires:
 
@@ -82,17 +82,17 @@ CMakeFiles/pmproxy2.dir/pmproxy2.c.o.provides.build: CMakeFiles/pmproxy2.dir/pmp
 
 
 CMakeFiles/pmproxy2.dir/CommandKeys.c.o: CMakeFiles/pmproxy2.dir/flags.make
-CMakeFiles/pmproxy2.dir/CommandKeys.c.o: ../CommandKeys.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/pmproxy2.dir/CommandKeys.c.o"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/pmproxy2.dir/CommandKeys.c.o   -c /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c
+CMakeFiles/pmproxy2.dir/CommandKeys.c.o: CommandKeys.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/pmproxy2.dir/CommandKeys.c.o"
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/pmproxy2.dir/CommandKeys.c.o   -c /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c
 
 CMakeFiles/pmproxy2.dir/CommandKeys.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/pmproxy2.dir/CommandKeys.c.i"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c > CMakeFiles/pmproxy2.dir/CommandKeys.c.i
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c > CMakeFiles/pmproxy2.dir/CommandKeys.c.i
 
 CMakeFiles/pmproxy2.dir/CommandKeys.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/pmproxy2.dir/CommandKeys.c.s"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c -o CMakeFiles/pmproxy2.dir/CommandKeys.c.s
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c -o CMakeFiles/pmproxy2.dir/CommandKeys.c.s
 
 CMakeFiles/pmproxy2.dir/CommandKeys.c.o.requires:
 
@@ -117,7 +117,7 @@ pmproxy2: CMakeFiles/pmproxy2.dir/pmproxy2.c.o
 pmproxy2: CMakeFiles/pmproxy2.dir/CommandKeys.c.o
 pmproxy2: CMakeFiles/pmproxy2.dir/build.make
 pmproxy2: CMakeFiles/pmproxy2.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable pmproxy2"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable pmproxy2"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/pmproxy2.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -135,6 +135,6 @@ CMakeFiles/pmproxy2.dir/clean:
 .PHONY : CMakeFiles/pmproxy2.dir/clean
 
 CMakeFiles/pmproxy2.dir/depend:
-	cd /home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/prajwal/CLionProjects/pcp/src/pmproxy2 /home/prajwal/CLionProjects/pcp/src/pmproxy2 /home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug /home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug /home/prajwal/CLionProjects/pcp/src/pmproxy2/cmake-build-debug/CMakeFiles/pmproxy2.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/prajwal/CLionProjects/pcp/src/pmproxy2 && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/prajwal/CLionProjects/pcp/src/pmproxy2 /home/prajwal/CLionProjects/pcp/src/pmproxy2 /home/prajwal/CLionProjects/pcp/src/pmproxy2 /home/prajwal/CLionProjects/pcp/src/pmproxy2 /home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/pmproxy2.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/pmproxy2.dir/depend
 

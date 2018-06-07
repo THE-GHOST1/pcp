@@ -1,1 +1,1 @@
-/usr/bin/gcc  -g   CMakeFiles/pmproxy2.dir/pmproxy2.c.o  -o pmproxy2 -lhiredis -luv 
+/usr/bin/gcc  -g   CMakeFiles/pmproxy2.dir/pmproxy2.c.o CMakeFiles/pmproxy2.dir/CommandKeys.c.o  -o pmproxy2 -lhiredis -luv 

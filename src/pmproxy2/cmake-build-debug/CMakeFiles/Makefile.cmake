@@ -43,7 +43,6 @@ set(CMAKE_MAKEFILE_PRODUCTS
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
-  "CMakeFiles/pmproxy2.dir/DependInfo.cmake"
   "CMakeFiles/libuvclient.dir/DependInfo.cmake"
-  "CMakeFiles/pmproxy2-temp.dir/DependInfo.cmake"
+  "CMakeFiles/pmproxy2.dir/DependInfo.cmake"
   )

@@ -1,1 +1,1 @@
-/usr/bin/gcc  -g   CMakeFiles/libuvclient.dir/client.c.o  -o libuvclient -lhiredis -luv 
+/usr/bin/cc  -D_DEBUG   CMakeFiles/libuvclient.dir/client.c.o  -o libuvclient -lhiredis -luv 

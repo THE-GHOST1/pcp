@@ -1,4 +1,0 @@
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/edit_cache.dir
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/rebuild_cache.dir
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/libuvclient.dir
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles/pmproxy2.dir

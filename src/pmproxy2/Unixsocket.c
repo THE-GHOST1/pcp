@@ -14,7 +14,7 @@
 
 int guard(int n, char * err) { if (n == -1) { perror(err); exit(1); } return n; }
 
-void GetCallBack(redisAsyncContext *c, void *r, void *privdata) {
+void getCallback(redisAsyncContext *c, void *r, void *privdata) {
     int n;
     redisReply *reply = r;
     if (reply == NULL) return;
@@ -23,7 +23,7 @@ void GetCallBack(redisAsyncContext *c, void *r, void *privdata) {
     redisAsyncDisconnect(c);
 }
 
-void ConnectCallBack(const redisAsyncContext *c, int status) {
+void connectCallback(const redisAsyncContext *c, int status) {
     if (status != REDIS_OK) {
         printf("Error: %s\n", c->errstr);
         return;
@@ -31,7 +31,7 @@ void ConnectCallBack(const redisAsyncContext *c, int status) {
     printf("Connected...\n");
 }
 
-void DisconnectCallBack(const redisAsyncContext *c, int status) {
+void disconnectCallback(const redisAsyncContext *c, int status) {
     if (status != REDIS_OK) {
         printf("Error: %s\n", c->errstr);
         return;

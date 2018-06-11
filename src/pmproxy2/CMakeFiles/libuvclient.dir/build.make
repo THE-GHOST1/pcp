@@ -60,15 +60,15 @@ include CMakeFiles/libuvclient.dir/flags.make
 CMakeFiles/libuvclient.dir/client.c.o: CMakeFiles/libuvclient.dir/flags.make
 CMakeFiles/libuvclient.dir/client.c.o: client.c
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/prajwal/CLionProjects/pcp/src/pmproxy2/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building C object CMakeFiles/libuvclient.dir/client.c.o"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/libuvclient.dir/client.c.o   -c /home/prajwal/CLionProjects/pcp/src/pmproxy2/client.c
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/libuvclient.dir/client.c.o   -c /home/prajwal/CLionProjects/pcp/src/pmproxy2/client.c
 
 CMakeFiles/libuvclient.dir/client.c.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/libuvclient.dir/client.c.i"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/prajwal/CLionProjects/pcp/src/pmproxy2/client.c > CMakeFiles/libuvclient.dir/client.c.i
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/prajwal/CLionProjects/pcp/src/pmproxy2/client.c > CMakeFiles/libuvclient.dir/client.c.i
 
 CMakeFiles/libuvclient.dir/client.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/libuvclient.dir/client.c.s"
-	/usr/bin/gcc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/prajwal/CLionProjects/pcp/src/pmproxy2/client.c -o CMakeFiles/libuvclient.dir/client.c.s
+	/usr/bin/cc  $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/prajwal/CLionProjects/pcp/src/pmproxy2/client.c -o CMakeFiles/libuvclient.dir/client.c.s
 
 CMakeFiles/libuvclient.dir/client.c.o.requires:
 

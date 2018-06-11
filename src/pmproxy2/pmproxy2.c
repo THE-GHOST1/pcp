@@ -8,16 +8,18 @@
 #include <signal.h>
 #include <errno.h>
 #include <limits.h>
-#include <hiredis/hiredis.h>
+#include </home/prajwal/hiredis/hiredis.h>
 #include </home/prajwal/hiredis/net.h>
-#include <hiredis/sds.h>
-#include <hiredis/async.h>
-#include <hiredis/adapters/libuv.h>
-#include <CommandKeys.h>
+#include </home/prajwal/hiredis/sds.h>
+#include </home/prajwal/hiredis/async.h>
+#include </home/prajwal/hiredis/adapters/libuv.h>
+#include </home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h>
 //#include <../libpcp_web/src/redis.h>
 //#include <../libpcp_web/src/net.h>
 //#include <../libpcp_web/src/sdsalloc.h>
 //#include <../libpcp_web/src/libuv.h>
+
+
 
 #define PORT 44323
 
@@ -111,12 +113,12 @@ ProcessRedisReply(redisReply *reply) {
 }
 
 static void
-OnCloseCallBack(uv_handle_t *handle) {
+on_close_cb(uv_handle_t *handle) {
     free(handle);
 }
 
 static void
-AfterWrite(uv_write_t *req, int status) {
+after_write(uv_write_t *req, int status) {
     write_req_t *wr = (write_req_t *) req;
     if (wr->buf.base != NULL) {}
     free(wr);
@@ -125,11 +127,11 @@ AfterWrite(uv_write_t *req, int status) {
     if (status == UV_ECANCELED) return;
     assert(status == UV_EPIPE);
 
-    uv_close((uv_handle_t *) req->handle, OnCloseCallBack);
+    uv_close((uv_handle_t *) req->handle, on_close_cb);
 }
 
 static void
-AfterShutdown(uv_shutdown_t *req, int status) {
+after_shutdown(uv_shutdown_t *req, int status) {
     struct ClientRequestData        *data;
 
     data = req->handle->data;
@@ -137,12 +139,27 @@ AfterShutdown(uv_shutdown_t *req, int status) {
     if (status < 0) {
         fprintf(stderr, "%s\n", uv_strerror(status));
     }
-    uv_close((uv_handle_t *) req->handle, OnCloseCallBack);
+    uv_close((uv_handle_t *) req->handle, on_close_cb);
     free(req);
 }
 
 static void
-GetCallBack(redisAsyncContext *c, void *r, void *privdata){
+getcallback2(redisAsyncContext *c, void *r, void *privdata){
+    int               len;
+    int               i;
+    redisReply        *reply = r;
+    sds               getreply;
+
+    getreply    =     sdsempty();
+
+    getreply = ProcessRedisReply(reply);
+    printf("reply  : %s",getreply);
+    int numofcommands = (getreply[1] - '0');
+    sdsfree(getreply);
+}
+
+static void
+getCallback(redisAsyncContext *c, void *r, void *privdata){
     struct ClientRequestData    *data;
     int                         len;
     int                         i;
@@ -157,12 +174,12 @@ GetCallBack(redisAsyncContext *c, void *r, void *privdata){
     s = ProcessRedisReply(reply);
     printf("%s",s);
     wr->buf = uv_buf_init(s, sdslen(s));
-    r = uv_write(&wr->req, data->client, &wr->buf, 1, AfterWrite);
+    r = uv_write(&wr->req, data->client, &wr->buf, 1, after_write);
     sdsfree(s);
 }
 
 static void
-AfterRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     struct ClientRequestData            *data;
     redisReader                         *reader;
     void                                *reply;
@@ -187,7 +204,7 @@ AfterRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
         req = (uv_shutdown_t *) malloc(sizeof(*req));
         assert(req != NULL);
 
-        r = uv_shutdown(req, handle, AfterShutdown);
+        r = uv_shutdown(req, handle, after_shutdown);
         assert(r == 0);
 
         return;
@@ -219,7 +236,7 @@ AfterRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     keys = GetCommandKey(command);
 
     printf("Key for the command %s is %s \n",sdsbuffer,keys);
-  //  redisAsyncCommand(data->redisContext, GetCallBack, (char *) "end-1", command);
+    redisAsyncCommand(data->redisContext, getCallback, (char*)"end-1",command);
 
     fp=fopen(logfile,"a+");
     fputs(command,fp);
@@ -232,14 +249,14 @@ AfterRead(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 }
 
 static void
-Alloc_CB(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
     buf->base = malloc(suggested_size); //what size? break the msg (64 bit)
     assert(buf->base != NULL);
     buf->len = suggested_size;
 }
 
 static void
-ConnectCallBack(const redisAsyncContext *c, int status) {
+connectCallback(const redisAsyncContext *c, int status) {
     if (status != REDIS_OK) {
         printf("Error: %s\n", c->errstr);
         return;
@@ -248,7 +265,7 @@ ConnectCallBack(const redisAsyncContext *c, int status) {
 }
 
 static void
-DisconnectCallBack(const redisAsyncContext *c, int status) {
+disconnectCallback(const redisAsyncContext *c, int status) {
     if (status != REDIS_OK)
     {
         printf("Error: %s\n", c->errstr);
@@ -258,7 +275,7 @@ DisconnectCallBack(const redisAsyncContext *c, int status) {
 }
 
 static void
-OnConnection(uv_stream_t *server, int status) {
+on_connection(uv_stream_t *server, int status) {
     uv_tcp_t            *stream;
     int                 r;
     char                addr[16];
@@ -270,14 +287,14 @@ OnConnection(uv_stream_t *server, int status) {
     ClientCounter++;
     redisAsyncContext *c = redisAsyncConnect("127.0.0.1", 6379);
     redisLibuvAttach(c, uv_default_loop());
-    redisAsyncSetConnectCallback(c, ConnectCallBack);
+    redisAsyncSetConnectCallback(c, connectCallback);
     if (c->err) {
         printf("Error: %s\n", c->errstr);
         return;
     }
     redisLibuvAttach(c,uv_default_loop());
-    redisAsyncSetConnectCallback(c, ConnectCallBack);
-    redisAsyncSetDisconnectCallback(c, DisconnectCallBack);
+    redisAsyncSetConnectCallback(c,connectCallback);
+    redisAsyncSetDisconnectCallback(c,disconnectCallback);
     assert(status == 0);
 
     stream = malloc(sizeof(uv_tcp_t));
@@ -304,7 +321,7 @@ OnConnection(uv_stream_t *server, int status) {
     data->ClientID = ClientCounter;
     redisAsyncCommand(data->redisContext,NULL, NULL,"COMMAND");
 
-    r = uv_read_start((uv_stream_t *) stream, Alloc_CB, AfterRead);
+    r = uv_read_start((uv_stream_t *) stream, alloc_cb, after_read);
     assert(r == 0);
 }
 
@@ -313,7 +330,7 @@ OnConnection(uv_stream_t *server, int status) {
  * unpon succesful initialization returns 0
 */
 static int
-InitiServer() {
+init_server() {
     uv_tcp_t        *tcp_server;
     int             r;
 
@@ -323,7 +340,7 @@ InitiServer() {
     uv_tcp_bind(tcp_server, (const struct sockaddr *) &addr, 0);
     uv_tcp_keepalive(tcp_server, 1, 50);
     uv_tcp_simultaneous_accepts(tcp_server, 1);
-    r = uv_listen((uv_stream_t *) tcp_server, SOMAXCONN, OnConnection);
+    r = uv_listen((uv_stream_t *) tcp_server, SOMAXCONN, on_connection);
     if (r) {
         fprintf(stderr, "LISTEN ERROR %s\n", uv_strerror(r));
         return 1;
@@ -334,7 +351,7 @@ InitiServer() {
 int
 main() {
     int         r;
-    r = InitiServer();
+    r = init_server();
     assert(r == 0);
     uv_run(uv_default_loop(), UV_RUN_DEFAULT);
     return 0;

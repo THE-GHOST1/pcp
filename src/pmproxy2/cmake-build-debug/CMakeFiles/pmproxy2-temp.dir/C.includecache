@@ -6,13 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c
-ctype.h
--
-CommandKeys.h
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h
-
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h
+/home/prajwal/CLionProjects/pcp/src/pmproxy2/temp2.c
 uv.h
 -
 stdio.h
@@ -42,40 +36,6 @@ limits.h
 /home/prajwal/hiredis/async.h
 -
 /home/prajwal/hiredis/adapters/libuv.h
--
-
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/pmproxy2.c
-uv.h
--
-stdio.h
--
-stdlib.h
--
-string.h
--
-assert.h
--
-sys/time.h
--
-unistd.h
--
-signal.h
--
-errno.h
--
-limits.h
--
-/home/prajwal/hiredis/hiredis.h
--
-/home/prajwal/hiredis/net.h
--
-/home/prajwal/hiredis/sds.h
--
-/home/prajwal/hiredis/async.h
--
-/home/prajwal/hiredis/adapters/libuv.h
--
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h
 -
 
 /home/prajwal/hiredis/adapters/libuv.h

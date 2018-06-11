@@ -7,8 +7,6 @@
 #IncludeRegexTransform: 
 
 /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.c
-ctype.h
--
 CommandKeys.h
 /home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h
 
@@ -26,6 +24,8 @@ assert.h
 sys/time.h
 -
 unistd.h
+-
+ctype.h
 -
 signal.h
 -
@@ -65,17 +65,17 @@ errno.h
 -
 limits.h
 -
-/home/prajwal/hiredis/hiredis.h
+hiredis/hiredis.h
 -
 /home/prajwal/hiredis/net.h
 -
-/home/prajwal/hiredis/sds.h
+hiredis/sds.h
 -
-/home/prajwal/hiredis/async.h
+hiredis/async.h
 -
-/home/prajwal/hiredis/adapters/libuv.h
+hiredis/adapters/libuv.h
 -
-/home/prajwal/CLionProjects/pcp/src/pmproxy2/CommandKeys.h
+CommandKeys.h
 -
 
 /home/prajwal/hiredis/adapters/libuv.h
@@ -120,5 +120,39 @@ sys/types.h
 stdarg.h
 -
 stdint.h
+-
+
+CommandKeys.h
+uv.h
+-
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+assert.h
+-
+sys/time.h
+-
+unistd.h
+-
+ctype.h
+-
+signal.h
+-
+errno.h
+-
+limits.h
+-
+/home/prajwal/hiredis/hiredis.h
+-
+/home/prajwal/hiredis/net.h
+-
+/home/prajwal/hiredis/sds.h
+-
+/home/prajwal/hiredis/async.h
+-
+/home/prajwal/hiredis/adapters/libuv.h
 -
 

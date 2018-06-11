@@ -6,5 +6,5 @@ C_FLAGS = -g   -std=gnu11
 
 C_DEFINES = 
 
-C_INCLUDES = -I/home/prajwal/CLionProjects/pcp/src/pmproxy2 
+C_INCLUDES = 
 

@@ -1,0 +1,1 @@
+/usr/bin/gcc  -g   CMakeFiles/libuvdaemon.dir/pmproxy2.c.o  -o libuvdaemon -lhiredis -luv 

@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <signal.h>
 #include <errno.h>
 #include <limits.h>

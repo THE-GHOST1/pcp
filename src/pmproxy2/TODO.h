@@ -1,13 +1,10 @@
 /*
- * TODO important : * Make redis_submitcb async (work with sleeps)   *fix movable keys issue
+ * TODO important : * Make redis_submitcb aync
  *
  *
  *
  * TODO :
  * configuration file
- *
- *
- * nope - unix socket support
  *
  *
  * test scripts
@@ -16,14 +13,4 @@
  * access control to PDU in pmproxy2
  *
  *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- * invade poland
+ * invade poland ?

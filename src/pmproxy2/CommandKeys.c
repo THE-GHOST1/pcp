@@ -676,9 +676,9 @@ sds GetCommandKey(char *clientcommand){
             return 1;
         }
 
-        redisLibuvAttach(c,loop);
-        redisAsyncSetConnectCallback(c,ConnectCallBack);
-        redisAsyncSetDisconnectCallback(c,DisconnectCallBack);
+        redisEventAttach(c,loop);
+        redisAsyncSetConnectCallBack(c,ConnectCallBack);
+        redisAsyncSetDisconnectCallBack(c,DisconnectCallBack);
         redisAsyncCommand(c, GetCallBack, (char*)"end-1", tempcommand);
         free(tempcommand);
         uv_run(loop, UV_RUN_DEFAULT);

@@ -306,13 +306,13 @@ on_connection(uv_stream_t *server, int status) {
     int namelen = sizeof(name);
     ClientCounter++;
     redisAsyncContext *c = redisAsyncConnect("127.0.0.1", 6379);
-    redisEventAttach(c, uv_default_loop());
+    redisLibuvAttach(c, uv_default_loop());
     redisAsyncSetConnectCallBack(c, connectCallback);
     if (c->err) {
         printf("Error: %s\n", c->errstr);
         return;
     }
-    redisEventAttach(c,uv_default_loop());
+    redisLibuvAttach(c,uv_default_loop());
     redisAsyncSetConnectCallBack(c,connectCallback);
     redisAsyncSetDisconnectCallBack(c,disconnectCallback);
     assert(status == 0);

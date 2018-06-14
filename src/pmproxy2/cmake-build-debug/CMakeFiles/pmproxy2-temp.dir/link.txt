@@ -1,1 +1,0 @@
-/usr/bin/gcc  -g   CMakeFiles/pmproxy2-temp.dir/temp2.c.o  -o pmproxy2-temp -lhiredis -luv 

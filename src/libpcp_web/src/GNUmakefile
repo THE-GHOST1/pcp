@@ -21,13 +21,8 @@ CFILES = jsmn.c http_client.c http_parser.c sds.c siphash.c \
 	 json_helpers.c
 HFILES = jsmn.h http_client.h http_parser.h sdsalloc.h zmalloc.h \
 	 query.h schema.h load.h crc16.h sha1.h util.h slots.h \
-<<<<<<< HEAD
-	 redis.h net.h dict.h maps.h libuv.h\
-	 private.h
-=======
 	 redis.h net.h dict.h maps.h \
 	 private.h libuv.h
->>>>>>> upstream/master
 YFILES = query_parser.y
 XFILES = jsmn.c jsmn.h http_parser.c http_parser.h crc16.c crc16.h \
 	 sha1.c sha1.h sds.c siphash.c dict.c dict.h

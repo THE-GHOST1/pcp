@@ -112,7 +112,8 @@ cache_prepare(const char *name, void *arg)
 		name, pmErrStr_r(sts, pmmsg, sizeof(pmmsg)));
 	loadmsg(sp, PMLOG_WARNING, msg);
     } else if ((hname = strdup(name)) == NULL) {
-	loadfmt(msg, "out of memory (%s, %" FMT_INT64 " bytes)", "cache metric name", (__int64_t)strlen(name)+1);
+	loadfmt(msg, "out of memory (%s, %" FMT_INT64 " bytes)",
+		"cache metric name", (__int64_t)strlen(name)+1);
 	loadmsg(sp, PMLOG_ERROR, msg);
     } else {
 	if (sp->verbose || pmDebugOptions.series)
@@ -736,7 +737,7 @@ set_context_source(SOURCE *sp, const char *source)
 {
     sp->context.name = sdsnew(source);
 }
-`
+
 static void
 set_context_type(SOURCE *sp, const char *name)
 {

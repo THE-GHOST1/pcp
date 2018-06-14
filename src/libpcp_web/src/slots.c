@@ -35,22 +35,7 @@ redisSlotsInit(sds hostspec, struct timeval *timeout)
 	timeout = &default_timeout;
     else
 	pool->timeout = *timeout;
-    pool->context = redis_connect(hostspec,timeout);
-    return pool;
-}
-
-redisSlots *
-redisAsyncSlotsInit(sds hostspec)
-{
-    redisSlots		*pool;
-
-    if ((pool = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
-        return NULL;
-
-    pool->hostspec = sdsdup(hostspec);
-
-    pool->asynccontext = redis_async_connect(hostspec);
-
+    pool->control = redis_connect(hostspec, timeout);
     return pool;
 }
 
@@ -164,7 +149,6 @@ redisGet(redisSlots *redis, const char *command, sds key)
 	return redis->control;
 
     slot = keySlot(key, sdslen(key));
-
     if (UNLIKELY(pmDebugOptions.series))
 	fprintf(stderr, "redisGet[slot=%u] %s %s\n", slot, command, key);
     s.start = s.end = slot;
@@ -174,56 +158,17 @@ redisGet(redisSlots *redis, const char *command, sds key)
 	return NULL;
 
     range->counter++;
-    server = (range->nslaves == 0 || redis->readonly == 0) ? &range->master : &range->slaves[range->counter % range->nslaves];
+    server = (range->nslaves == 0 || redis->readonly == 0) ? &range->master
+	   : &range->slaves[range->counter % range->nslaves];
     if (server->redis == NULL)
-	server->redis = redis_async_connect(server->hostspec);
+	server->redis = redis_connect(server->hostspec, &redis->timeout);
     return server->redis;
-}
-
-redisContext *
-redis_async_connect(char *server)
-{
-    unsigned int	port;
-    char		*endnum, *p;
-    char		hostname[MAXHOSTNAMELEN];
-
-    redisAsynContext *asyncredis;
-
-    if (server == NULL)
-        server = default_server;
-
-    pmsprintf(hostname, sizeof(hostname), "%s", server);
-
-    if ((p = rindex(hostname, ':')) == NULL) {
-        port = 6379;  /* default redis port */
-    } else {
-        port = (unsigned int)strtoul(p + 1, &endnum, 10);
-        if (*endnum != '\0')
-            port = 6379;
-        else
-            *p = '\0';
-    }
-
-    asyncredis = redisAsyncConnect(hostname, port);
-
-    if (!asyncredis || asyncredis->err) {
-        if (asyncredis) {
-            fprintf(stderr, "Redis connection error: %s\n", redis->errstr);
-            redisFree(redis);
-        } else {
-            fprintf(stderr, "Redis connection error: can't allocate context\n");
-        }
-        return NULL;
-    }
-
-    return asyncredis;
 }
 
 redisContext *
 redis_connect(char *server, struct timeval *timeout)
 {
     redisContext	*redis;
-
 
     if (server == NULL)
 	server = default_server;
@@ -249,7 +194,6 @@ redis_connect(char *server, struct timeval *timeout)
 	}
 	/* redis = redisConnectWithTimeout(server, port, *timeout); */
 	redis = redisConnect(hostname, port);
-
     }
 
     /* TODO: messages need to be passed back via an info callback */

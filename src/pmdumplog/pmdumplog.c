@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <float.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 static struct pmTimeval	pmtv;
 static char		timebuf[32];	/* for pmCtime result + .xxx */
@@ -748,18 +749,18 @@ dumpTI(__pmContext *ctxp)
 	printf("\t  %5d  %11d  %11d\n", tip->ti_vol, tip->ti_meta, tip->ti_log);
 	if (i == 0) {
 	    pmsprintf(path, sizeof(path), "%s.meta", lcp->l_name);
-	    if (stat(path, &sbuf) == 0)
+	    if (__pmStat(path, &sbuf) == 0)
 		meta_size = sbuf.st_size;
 	    else
 		meta_size = -1;
 	}
 	if (lastp == NULL || tip->ti_vol != lastp->ti_vol) { 
 	    pmsprintf(path, sizeof(path), "%s.%d", lcp->l_name, tip->ti_vol);
-	    if (stat(path, &sbuf) == 0)
+	    if (__pmStat(path, &sbuf) == 0)
 		log_size = sbuf.st_size;
 	    else {
 		log_size = -1;
-		printf("\t\tWarning: file missing or compressed for log volume %d\n", tip->ti_vol);
+		printf("\t\tWarning: file missing for log volume %d\n", tip->ti_vol);
 	    }
 	}
 	/*
@@ -856,7 +857,11 @@ rawdump(FILE *f)
     int		i;
     int		sts;
 
-    old = ftell(f);
+    if ((old = ftell(f)) < 0) {
+	fprintf(stderr, "rawdump: Botch: ftell(%p) -> %ld (%s)\n", f, old, pmErrStr(-errno));
+	return;
+    }
+
     fseek(f, (long)0, SEEK_SET);
 
     while ((sts = fread(&len, 1, sizeof(len), f)) == sizeof(len)) {
@@ -926,7 +931,7 @@ isSingleArchive(const char *name)
 	return 0;
 
     /* No not allow a directory */
-    if (stat(name, &sbuf) != 0)
+    if (__pmStat(name, &sbuf) != 0)
 	return 1; /* Let pmNewContext(1) issue the error */
 
     if (S_ISDIR(sbuf.st_mode))

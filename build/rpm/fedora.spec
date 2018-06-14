@@ -50,7 +50,12 @@ Source4: %{github}/pcp-webapp-blinkenlights/archive/1.0.0/pcp-webapp-blinkenligh
 %global disable_webapps 0
 %global disable_cairo 0
 
+%if 0%{?rhel} > 7
+%global disable_python2 1
+%else
 %global disable_python2 0
+%endif
+
 # Default for epel5 is python24, so use the (optional) python26 packages
 %if 0%{?rhel} == 5
 %global default_python 26
@@ -344,10 +349,10 @@ fi
 %global selinux_handle_policy() %{expand:
 if [ %1 -ge 1 ]
 then
-    %{_libexecdir}/pcp/bin/selinux-setup install %2
+    %{_libexecdir}/pcp/bin/selinux-setup %{_selinuxdir} install %2
 elif [ %1 -eq 0 ]
 then
-    %{_libexecdir}/pcp/bin/selinux-setup remove %2
+    %{_libexecdir}/pcp/bin/selinux-setup %{_selinuxdir} remove %2
 fi
 }
 
@@ -808,9 +813,11 @@ Requires: pcp-libs >= %{version}-%{release}
 %if !%{disable_python3}
 Requires: python3-pcp = %{version}-%{release}
 Requires: python3-openpyxl
+BuildRequires: python3-openpyxl
 %else
 Requires: %{__python2}-pcp = %{version}-%{release}
 Requires: %{__python2}-openpyxl
+BuildRequires: %{__python2}-openpyxl
 %endif
 
 %description export-pcp2xlsx
@@ -2070,15 +2077,14 @@ Summary: Performance Co-Pilot (PCP) System and Monitoring Tools
 URL: https://pcp.io
 %if !%{disable_python3}
 Requires: python3-pcp = %{version}-%{release}
-%endif
-%if !%{disable_python2}
+%else
 Requires: %{__python2}-pcp = %{version}-%{release}
 %endif
 Requires: pcp-libs = %{version}-%{release}
 
 %description system-tools
 This PCP module contains additional system monitoring tools written
-in python.
+in the Python language.
 %endif #end pcp-system-tools
 
 %if !%{disable_qt}
@@ -2306,7 +2312,7 @@ ls -1 $RPM_BUILD_ROOT/%{_pmdasdir} |\
 
 # all base pcp package files except those split out into sub-packages
 ls -1 $RPM_BUILD_ROOT/%{_bindir} |\
-  grep -E -v 'pmiostat|pmcollectl|zabbix|zbxpcp' |\
+  grep -E -v 'pmiostat|pmcollectl|zabbix|zbxpcp|dstat' |\
   grep -E -v 'pmrep|pcp2graphite|pcp2influxdb|pcp2zabbix' |\
   grep -E -v 'pcp2elasticsearch|pcp2json|pcp2xlsx|pcp2xml' |\
   grep -E -v 'pmdbg|pmclient|pmerr|genpmda' |\
@@ -2317,10 +2323,11 @@ sed -e 's#^#'%{_bindir}'\/#' >base_bin.list
 # pcp(1) sub-command variants so are also in pcp-system-tools.
 %if !%{disable_python2} || !%{disable_python3}
 ls -1 $RPM_BUILD_ROOT/%{_bindir} |\
-  grep -E 'pmiostat|pmcollectl|pmrep' |\
+  egrep -e 'pmiostat|pmcollectl|pmrep|dstat' |\
   sed -e 's#^#'%{_bindir}'\/#' >pcp-system-tools.list
 ls -1 $RPM_BUILD_ROOT/%{_libexecdir}/pcp/bin |\
-  grep -E 'atop|collectl|dmcache|dstat|free|iostat|mpstat|numastat|pidstat|shping|tapestat|uptime|verify' |\
+  egrep -e 'atop|collectl|dmcache|dstat|free|iostat|ipcs|lvmcache|mpstat' \
+        -e 'numastat|pidstat|shping|tapestat|uptime|verify' |\
   sed -e 's#^#'%{_libexecdir}/pcp/bin'\/#' >>pcp-system-tools.list
 %endif
 # Separate the pcp-selinux package files.
@@ -2334,7 +2341,8 @@ ls -1 $RPM_BUILD_ROOT/%{_libexecdir}/pcp/bin |\
 
 ls -1 $RPM_BUILD_ROOT/%{_libexecdir}/pcp/bin |\
 %if !%{disable_python2} || !%{disable_python3}
-  grep -E -v 'atop|collectl|dmcache|dstat|free|iostat|mpstat|numastat|pidstat|shping|tapestat|uptime|verify|selinux-setup' |\
+  grep -E -v 'atop|collectl|dmcache|dstat|free|iostat|mpstat|numastat' |\
+  grep -E -v 'shping|tapestat|uptime|verify|selinux-setup' |\
 %endif
   sed -e 's#^#'%{_libexecdir}/pcp/bin'\/#' >base_exec.list
 ls -1 $RPM_BUILD_ROOT/%{_booksdir} |\
@@ -3335,8 +3343,10 @@ cd
 
 %if !%{disable_python2} || !%{disable_python3}
 %files system-tools -f pcp-system-tools.list
+%dir %{_confdir}/dstat
 %dir %{_confdir}/pmrep
-%config(noreplace) %{_confdir}/pmrep/pmrep.conf
+%config(noreplace) %{_confdir}/dstat/*
+%config(noreplace) %{_confdir}/pmrep/*
 %endif
 
 %changelog

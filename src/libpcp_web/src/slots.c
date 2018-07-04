@@ -68,9 +68,11 @@ slotsCompare(const void *pa, const void *pb)
     return 0;
 }
 
-int
+redisSlots
 redisSlotRangeInsert(redisSlots *redis, redisSlotRange *range)
 {
+    int		j;
+
     if (pmDebugOptions.series) {
 	int		i;
 
@@ -80,9 +82,15 @@ redisSlotRangeInsert(redisSlots *redis, redisSlotRange *range)
 	    fprintf(stderr, "\tSlave%u: %s\n", i, range->slaves[i].hostspec);
     }
 
-    if (tsearch((const void *)range, (void **)&redis->slots, slotsCompare))
-	return 0;
-    return -ENOMEM;
+    printf("Slot range: %u-%u\n", range->start, range->end);
+    printf("    Master: %s\n", range->master.hostspec);
+    for (j = 0; j < range->nslaves; j++)
+        printf("\tSlave%u: %s\n", j, range->slaves[j].hostspec);
+
+    tsearch((const void *)range, (void **)&redis->slots, slotsCompare);
+
+    return redis;
+  //  return -ENOMEM;
 }
 
 static void
@@ -193,6 +201,7 @@ redisAsyncGet(redisSlots *redis, const char *command, sds key)
         return redis->control;
 
     slot = keySlot(key, sdslen(key));
+    s.start = s.end = slot;
     p = tfind((const void *)&s, (void **)&redis->slots, slotsCompare);
     if ((range = *(redisSlotRange **)p) == NULL)
         return NULL;

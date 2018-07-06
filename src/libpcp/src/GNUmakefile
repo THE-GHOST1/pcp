@@ -40,9 +40,8 @@ GENERATED_HFILES = pmdbg.h
 LIBCONFIG = libpcp.pc
 VERSION_SCRIPT = exports
 
-LCFLAGS = -DPCP_INTERNAL '-DEXEC_SUFFIX="$(EXECSUFFIX)"' \
-	'-DDSO_SUFFIX="$(DSOSUFFIX)"'
-LCFLAGS += $(LIBPCP_CFLAGS)
+LCFLAGS = '-DEXEC_SUFFIX="$(EXECSUFFIX)"' '-DDSO_SUFFIX="$(DSOSUFFIX)"'
+LCFLAGS += $(LIBPCP_CFLAGS) -DPCP_INTERNAL
 LLDLIBS += $(LIBPCP_LDLIBS)
 
 ifeq "$(ENABLE_SECURE)" "true"
@@ -73,9 +72,7 @@ LIBTARGET = libpcp.$(DSOVERSION).$(DSOSUFFIX)
 SYMTARGET = libpcp.$(DSOSUFFIX)
 endif
 ifeq "$(TARGET_OS)" "mingw"
-ifeq "$(CROSS_COMPILING)" "yes"
 STATICLIBTARGET =
-endif
 LIBTARGET = libpcp.$(DSOSUFFIX)
 SYMTARGET =
 endif
@@ -102,6 +99,7 @@ jsmn.o: jsmn.c jsmn.h
 rtime.o: getdate.h
 derive.o derive_fetch.o: derive.h derive_parser.tab.h
 util.o:	pmdbg.h
+labels.o:	sort_r.h
 
 $(OBJECTS):	$(TOPDIR)/src/include/pcp/pmapi.h \
 		$(TOPDIR)/src/include/pcp/platform_defs.h \
@@ -153,8 +151,6 @@ pmdbg.h : ../../include/pcp/pmapi.h mk.pmdbg
 
 exports:	exports.master mk.exports
 	./mk.exports
-
-labels.o:	sort_r.h
 
 # The library is thread-safe ... check-statics will force a build failure
 # if there has been any change to the static variables and their disposition

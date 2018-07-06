@@ -74,3 +74,34 @@ PCP_WEB_1.5 {
     pmLogLevelPrint;
     pmLogLevelStr;
 } PCP_WEB_1.4;
+
+PCP_WEB_1.6 {
+  global:
+    pmDiscoverRegister;
+    pmDiscoverUnregister;
+} PCP_WEB_1.5;
+
+PCP_WEB_1.7 {
+  global:
+    redisAsyncDisconnect;
+    redisReaderFeed;
+    redisAsyncSlotsInit;
+    redisReaderGetReply;
+    freeReplyObject;
+    redisAsyncSetConnectCallBack;
+    redisAsyncSetDisconnectCallBack;
+    redisAsyncFormattedCommand;
+    redisReaderCreate;
+    redisAsyncConnectBind;
+    redisAsyncConnectBindWithReuse;
+    redisAsyncConnectUnix;
+    redisAsyncFree;
+    redisAsyncHandleRead;
+    redisAsyncHandleWrite;
+    redisEventAttach;
+    redisAsyncGet;
+    redisSlotRangeInsert;
+    redisFreeSlots;
+    redis_async_connect;
+    redis_async_init;
+} PCP_WEB_1.6;

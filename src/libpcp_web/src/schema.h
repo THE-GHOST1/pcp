@@ -91,7 +91,7 @@ redis_param_raw(sds cmd, sds param)
 
 typedef void (*redis_callback)(redisSlots *, redisReply *, void *);
 extern int redis_submitcb(redisSlots *, const char *, sds, sds,
-			redis_callback, void *);
+                          redis_callback, void *);
 extern int redis_submit(redisSlots *, const char *, sds, sds);
 
 extern redisSlots *redis_init(sds);

@@ -1,0 +1,352 @@
+++ basename 1211
++ seq=1211
++ echo 'QA output created by 1211'
+QA output created by 1211
++ . ./common.product
+++ . ./common.setup
++++ '[' -z '' ']'
++++ . ./common.rc
+++++ unset PCP_STDERR PCP_SECURE_SOCKETS
+++++ unset PMCD_CONNECT_TIMEOUT PMCD_RECONNECT_TIMEOUT
+++++ unset PMCD_REQUEST_TIMEOUT PMCD_WAIT_TIMEOUT
+++++ unset PMNS_DEFAULT PCP_COUNTER_WRAP
+++++ unset PMDA_PATH PMCD_PORT PMLOGGER_PORT
+++++ unset PMDA_LOCAL_PROC PMDA_LOCAL_SAMPLE PMIECONF_PATH
+++++ unset PMPROXY_PORT PMPROXY_HOST
+++++ '[' -r /etc/pcp.env ']'
+++++ . /etc/pcp.env
++++++ '[' -z '' ']'
++++++ '[' -n '' ']'
++++++ '[' -n '' ']'
++++++ __CONF=/etc/pcp.conf
++++++ '[' '!' -f /etc/pcp.conf ']'
+++++++ awk -F= '
+/^PCP_/ && NF == 2 {
+	    exports=exports" "$1
+	    printf "%s=${%s:-\"%s\"}\n", $1, $1, $2
+	}
+END	{ print "export", exports }'
+++++++ sed -e 's/"//g' /etc/pcp.conf
++++++ eval 'PCP_ETC_DIR=${PCP_ETC_DIR:-"/etc"}' 'PCP_SYSCONF_DIR=${PCP_SYSCONF_DIR:-"/etc/pcp"}' 'PCP_RC_DIR=${PCP_RC_DIR:-"/etc/init.d"}' 'PCP_SYSCONFIG_DIR=${PCP_SYSCONFIG_DIR:-"/etc/sysconfig"}' 'PCP_BIN_DIR=${PCP_BIN_DIR:-"/usr/bin"}' 'PCP_BINADM_DIR=${PCP_BINADM_DIR:-"/usr/lib/pcp/bin"}' 'PCP_LIB_DIR=${PCP_LIB_DIR:-"/usr/lib"}' 'PCP_LIB32_DIR=${PCP_LIB32_DIR:-"/usr/lib"}' 'PCP_SHARE_DIR=${PCP_SHARE_DIR:-"/usr/share/pcp"}' 'PCP_INC_DIR=${PCP_INC_DIR:-"/usr/include/pcp"}' 'PCP_MAN_DIR=${PCP_MAN_DIR:-"/usr/share/man"}' 'PCP_VAR_DIR=${PCP_VAR_DIR:-"/var/lib/pcp"}' 'PCP_PMCDCONF_PATH=${PCP_PMCDCONF_PATH:-"/etc/pcp/pmcd/pmcd.conf"}' 'PCP_PMCDOPTIONS_PATH=${PCP_PMCDOPTIONS_PATH:-"/etc/pcp/pmcd/pmcd.options"}' 'PCP_PMCDRCLOCAL_PATH=${PCP_PMCDRCLOCAL_PATH:-"/etc/pcp/pmcd/rc.local"}' 'PCP_PMPROXYOPTIONS_PATH=${PCP_PMPROXYOPTIONS_PATH:-"/etc/pcp/pmproxy/pmproxy.options"}' 'PCP_PMWEBDOPTIONS_PATH=${PCP_PMWEBDOPTIONS_PATH:-"/etc/pcp/pmwebd/pmwebd.options"}' 'PCP_PMMGROPTIONS_PATH=${PCP_PMMGROPTIONS_PATH:-"/etc/pcp/pmmgr/pmmgr.options"}' 'PCP_PMIECONTROL_PATH=${PCP_PMIECONTROL_PATH:-"/etc/pcp/pmie/control"}' 'PCP_PMSNAPCONTROL_PATH=${PCP_PMSNAPCONTROL_PATH:-"/etc/pcp/pmsnap/control"}' 'PCP_PMLOGGERCONTROL_PATH=${PCP_PMLOGGERCONTROL_PATH:-"/etc/pcp/pmlogger/control"}' 'PCP_PMDAS_DIR=${PCP_PMDAS_DIR:-"/var/lib/pcp/pmdas"}' 'PCP_RUN_DIR=${PCP_RUN_DIR:-"/var/run/pcp"}' 'PCP_LOG_DIR=${PCP_LOG_DIR:-"/var/log/pcp"}' 'PCP_SA_DIR=${PCP_SA_DIR:-"/var/log/pcp/sa"}' 'PCP_TMP_DIR=${PCP_TMP_DIR:-"/var/lib/pcp/tmp"}' 'PCP_TMPFILE_DIR=${PCP_TMPFILE_DIR:-"/var/tmp"}' 'PCP_DOC_DIR=${PCP_DOC_DIR:-"/usr/share/doc/pcp-4.1.0"}' 'PCP_HTML_DIR=${PCP_HTML_DIR:-"/usr/share/doc/pcp-doc/html"}' 'PCP_DEMOS_DIR=${PCP_DEMOS_DIR:-"/usr/share/pcp/demos"}' 'PCP_NSSDB_DIR=${PCP_NSSDB_DIR:-"/etc/pcp/nssdb"}' 'PCP_AWK_PROG=${PCP_AWK_PROG:-"/usr/bin/gawk' '--posix"}' 'PCP_SORT_PROG=${PCP_SORT_PROG:-"/usr/bin/sort"}' 'PCP_MAKE_PROG=${PCP_MAKE_PROG:-"/usr/bin/make"}' 'PCP_CC_PROG=${PCP_CC_PROG:-"gcc' '"}' 'PCP_ECHO_PROG=${PCP_ECHO_PROG:-"/bin/echo"}' 'PCP_ECHO_N=${PCP_ECHO_N:-"-n"}' 'PCP_ECHO_C=${PCP_ECHO_C:-""}' 'PCP_SYSLOG_PROG=${PCP_SYSLOG_PROG:-"logger"}' 'PCP_PS_PROG=${PCP_PS_PROG:-"ps"}' 'PCP_PS_ALL_FLAGS=${PCP_PS_ALL_FLAGS:-"-efw"}' 'PCP_PYTHON_PROG=${PCP_PYTHON_PROG:-"python3"}' 'PCP_PERL_PROG=${PCP_PERL_PROG:-"perl"}' 'PCP_WHICH_PROG=${PCP_WHICH_PROG:-"/usr/bin/which"}' 'PCP_PLATFORM=${PCP_PLATFORM:-"linux"}' 'PCP_PLATFORM_PATHS=${PCP_PLATFORM_PATHS:-"/usr/bin/X11:/usr/local/bin"}' 'PCP_VERSION=${PCP_VERSION:-"4.1.0"}' 'PCP_XCONFIRM_PROG=${PCP_XCONFIRM_PROG:-"/usr/bin/pmconfirm"}' 'PCP_MPI_DIRS=${PCP_MPI_DIRS:-""}' 'PCP_USER=${PCP_USER:-"pcp"}' 'PCP_GROUP=${PCP_GROUP:-"pcp"}' 'PCP_SASLCONF_DIR=${PCP_SASLCONF_DIR:-"/etc/sasl2"}' 'PCP_SYSTEMDUNIT_DIR=${PCP_SYSTEMDUNIT_DIR:-"/lib/systemd/system"}' export PCP_ETC_DIR PCP_SYSCONF_DIR PCP_RC_DIR PCP_SYSCONFIG_DIR PCP_BIN_DIR PCP_BINADM_DIR PCP_LIB_DIR PCP_LIB32_DIR PCP_SHARE_DIR PCP_INC_DIR PCP_MAN_DIR PCP_VAR_DIR PCP_PMCDCONF_PATH PCP_PMCDOPTIONS_PATH PCP_PMCDRCLOCAL_PATH PCP_PMPROXYOPTIONS_PATH PCP_PMWEBDOPTIONS_PATH PCP_PMMGROPTIONS_PATH PCP_PMIECONTROL_PATH PCP_PMSNAPCONTROL_PATH PCP_PMLOGGERCONTROL_PATH PCP_PMDAS_DIR PCP_RUN_DIR PCP_LOG_DIR PCP_SA_DIR PCP_TMP_DIR PCP_TMPFILE_DIR PCP_DOC_DIR PCP_HTML_DIR PCP_DEMOS_DIR PCP_NSSDB_DIR PCP_AWK_PROG PCP_SORT_PROG PCP_MAKE_PROG PCP_CC_PROG PCP_ECHO_PROG PCP_ECHO_N PCP_ECHO_C PCP_SYSLOG_PROG PCP_PS_PROG PCP_PS_ALL_FLAGS PCP_PYTHON_PROG PCP_PERL_PROG PCP_WHICH_PROG PCP_PLATFORM PCP_PLATFORM_PATHS PCP_VERSION PCP_XCONFIRM_PROG PCP_MPI_DIRS PCP_USER PCP_GROUP PCP_SASLCONF_DIR PCP_SYSTEMDUNIT_DIR
+++++++ PCP_ETC_DIR=/etc
+++++++ PCP_SYSCONF_DIR=/etc/pcp
+++++++ PCP_RC_DIR=/etc/init.d
+++++++ PCP_SYSCONFIG_DIR=/etc/sysconfig
+++++++ PCP_BIN_DIR=/usr/bin
+++++++ PCP_BINADM_DIR=/usr/lib/pcp/bin
+++++++ PCP_LIB_DIR=/usr/lib
+++++++ PCP_LIB32_DIR=/usr/lib
+++++++ PCP_SHARE_DIR=/usr/share/pcp
+++++++ PCP_INC_DIR=/usr/include/pcp
+++++++ PCP_MAN_DIR=/usr/share/man
+++++++ PCP_VAR_DIR=/var/lib/pcp
+++++++ PCP_PMCDCONF_PATH=/etc/pcp/pmcd/pmcd.conf
+++++++ PCP_PMCDOPTIONS_PATH=/etc/pcp/pmcd/pmcd.options
+++++++ PCP_PMCDRCLOCAL_PATH=/etc/pcp/pmcd/rc.local
+++++++ PCP_PMPROXYOPTIONS_PATH=/etc/pcp/pmproxy/pmproxy.options
+++++++ PCP_PMWEBDOPTIONS_PATH=/etc/pcp/pmwebd/pmwebd.options
+++++++ PCP_PMMGROPTIONS_PATH=/etc/pcp/pmmgr/pmmgr.options
+++++++ PCP_PMIECONTROL_PATH=/etc/pcp/pmie/control
+++++++ PCP_PMSNAPCONTROL_PATH=/etc/pcp/pmsnap/control
+++++++ PCP_PMLOGGERCONTROL_PATH=/etc/pcp/pmlogger/control
+++++++ PCP_PMDAS_DIR=/var/lib/pcp/pmdas
+++++++ PCP_RUN_DIR=/var/run/pcp
+++++++ PCP_LOG_DIR=/var/log/pcp
+++++++ PCP_SA_DIR=/var/log/pcp/sa
+++++++ PCP_TMP_DIR=/var/lib/pcp/tmp
+++++++ PCP_TMPFILE_DIR=/var/tmp
+++++++ PCP_DOC_DIR=/usr/share/doc/pcp-4.1.0
+++++++ PCP_HTML_DIR=/usr/share/doc/pcp-doc/html
+++++++ PCP_DEMOS_DIR=/usr/share/pcp/demos
+++++++ PCP_NSSDB_DIR=/etc/pcp/nssdb
+++++++ PCP_AWK_PROG='/usr/bin/gawk --posix'
+++++++ PCP_SORT_PROG=/usr/bin/sort
+++++++ PCP_MAKE_PROG=/usr/bin/make
+++++++ PCP_CC_PROG='gcc '
+++++++ PCP_ECHO_PROG=/bin/echo
+++++++ PCP_ECHO_N=-n
+++++++ PCP_ECHO_C=
+++++++ PCP_SYSLOG_PROG=logger
+++++++ PCP_PS_PROG=ps
+++++++ PCP_PS_ALL_FLAGS=-efw
+++++++ PCP_PYTHON_PROG=python3
+++++++ PCP_PERL_PROG=perl
+++++++ PCP_WHICH_PROG=/usr/bin/which
+++++++ PCP_PLATFORM=linux
+++++++ PCP_PLATFORM_PATHS=/usr/bin/X11:/usr/local/bin
+++++++ PCP_VERSION=4.1.0
+++++++ PCP_XCONFIRM_PROG=/usr/bin/pmconfirm
+++++++ PCP_MPI_DIRS=
+++++++ PCP_USER=pcp
+++++++ PCP_GROUP=pcp
+++++++ PCP_SASLCONF_DIR=/etc/sasl2
+++++++ PCP_SYSTEMDUNIT_DIR=/lib/systemd/system
+++++++ export PCP_ETC_DIR PCP_SYSCONF_DIR PCP_RC_DIR PCP_SYSCONFIG_DIR PCP_BIN_DIR PCP_BINADM_DIR PCP_LIB_DIR PCP_LIB32_DIR PCP_SHARE_DIR PCP_INC_DIR PCP_MAN_DIR PCP_VAR_DIR PCP_PMCDCONF_PATH PCP_PMCDOPTIONS_PATH PCP_PMCDRCLOCAL_PATH PCP_PMPROXYOPTIONS_PATH PCP_PMWEBDOPTIONS_PATH PCP_PMMGROPTIONS_PATH PCP_PMIECONTROL_PATH PCP_PMSNAPCONTROL_PATH PCP_PMLOGGERCONTROL_PATH PCP_PMDAS_DIR PCP_RUN_DIR PCP_LOG_DIR PCP_SA_DIR PCP_TMP_DIR PCP_TMPFILE_DIR PCP_DOC_DIR PCP_HTML_DIR PCP_DEMOS_DIR PCP_NSSDB_DIR PCP_AWK_PROG PCP_SORT_PROG PCP_MAKE_PROG PCP_CC_PROG PCP_ECHO_PROG PCP_ECHO_N PCP_ECHO_C PCP_SYSLOG_PROG PCP_PS_PROG PCP_PS_ALL_FLAGS PCP_PYTHON_PROG PCP_PERL_PROG PCP_WHICH_PROG PCP_PLATFORM PCP_PLATFORM_PATHS PCP_VERSION PCP_XCONFIRM_PROG PCP_MPI_DIRS PCP_USER PCP_GROUP PCP_SASLCONF_DIR PCP_SYSTEMDUNIT_DIR
++++++ export PCP_ENV_DONE=y
++++++ PCP_ENV_DONE=y
++++++ for dir in '${PCP_BIN_DIR}' '${PCP_BINADM_DIR}' '${PCP_SHARE_DIR}/bin' '${PCP_PLATFORM_PATHS}'
++++++ '[' -d /usr/bin ']'
++++++ grep :/usr/bin:
++++++ echo :/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:
++++++ :
++++++ for dir in '${PCP_BIN_DIR}' '${PCP_BINADM_DIR}' '${PCP_SHARE_DIR}/bin' '${PCP_PLATFORM_PATHS}'
++++++ '[' -d /usr/lib/pcp/bin ']'
++++++ grep :/usr/lib/pcp/bin:
++++++ echo :/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:
++++++ PATH=/usr/lib/pcp/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
++++++ for dir in '${PCP_BIN_DIR}' '${PCP_BINADM_DIR}' '${PCP_SHARE_DIR}/bin' '${PCP_PLATFORM_PATHS}'
++++++ '[' -d /usr/share/pcp/bin ']'
++++++ for dir in '${PCP_BIN_DIR}' '${PCP_BINADM_DIR}' '${PCP_SHARE_DIR}/bin' '${PCP_PLATFORM_PATHS}'
++++++ '[' -d /usr/bin/X11:/usr/local/bin ']'
++++++ export PATH
++++++ '[' -f /home/prajwal/.pcp/pcp.conf ']'
+++++ for dir in /sbin /usr/sbin
+++++ '[' -d /sbin ']'
+++++ PATH=/usr/lib/pcp/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin
+++++ for dir in /sbin /usr/sbin
+++++ '[' -d /usr/sbin ']'
+++++ PATH=/usr/lib/pcp/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/sbin:/usr/sbin
+++++ export PATH
+++++ PCP_PMCD_PROG=/usr/lib/pcp/bin/pmcd
+++++ PCP_PMCDLOG_PATH=/var/log/pcp/pmcd/pmcd.log
+++++ export PCP_PMCD_PROG PCP_PMCDLOG_PATH
+++++ PCPQA_NO_RC_STATUS=
+++++ export PCPQA_NO_RC_STATUS
+++++ case $PCP_PLATFORM in
+++++ DSO_SUFFIX=so
++++++ which sudo
+++++ sudo=/usr/bin/sudo
+++++ case $PCP_PLATFORM in
+++++ egrep '(\[-[a-zA-DF-Z]*E[a-zA-Z]*\])|(.-E[, 	])'
+++++ /usr/bin/sudo -h
+++++ sudo='/usr/bin/sudo -E'
+++++ case $PCP_PLATFORM in
+++++ sudo_local_ctx=
+++++ real_sudo='/usr/bin/sudo -E'
+++++ '[' -n '' ']'
++++++ pwd
+++++ here=/home/prajwal/CLionProjects/pcp/qa
+++++ '[' -z '' ']'
+++++ '[' -z 1211 ']'
+++++ tmp=/tmp/1211-18285
+++++ export LC_COLLATE=POSIX
+++++ LC_COLLATE=POSIX
++++ __done_common_rc=yes
++++ OPTION_AGENTS=true
++++ OPTION_LOGGER=true
++++ OPTION_REMOTE=true
++++ OPTION_PMCD_TRACE=true
++++ '[' -z '' ']'
++++ DEFAULT_HOST=
+++ . ./localconfig
++++ PCP_PLATFORM=linux
++++ PCP_VER=40100
+++ PCP_PMCD_PATH=/usr/lib/pcp/bin/pmcd
++ . ./common.filter
++ . ./common.check
+++ '[' '!' -f localconfig ']'
+++ . ./localconfig
++++ PCP_PLATFORM=linux
++++ PCP_VER=40100
+++ export PCPQA_SYSTEMD=no
+++ PCPQA_SYSTEMD=no
+++ _valgrind_clean_assert=
+++ which valgrind
++++ sed -e s/valgrind-//
++++ valgrind --version
+++ __version=3.11.0
+++ '[' -f /home/prajwal/CLionProjects/pcp/qa/valgrind-suppress-3.11.0 ']'
+++ __extra=--suppressions=/home/prajwal/CLionProjects/pcp/qa/valgrind-suppress-3.11.0
+++ valgrind --help
+++ grep -q .--vgdb=
+++ __extra='--suppressions=/home/prajwal/CLionProjects/pcp/qa/valgrind-suppress-3.11.0 --vgdb=no'
+++ grep -q show-leak-kinds
+++ valgrind --help
+++ grep -q .--show-leak-kinds=
+++ __extra='--suppressions=/home/prajwal/CLionProjects/pcp/qa/valgrind-suppress-3.11.0 --vgdb=no --show-leak-kinds=definite'
+++ /usr/bin/sudo -E rm -f /tmp/1211-18285.valgrind.help
+++ _valgrind_clean_assert='valgrind -q 	     --leak-check=full --read-var-info=yes --gen-suppressions=all 	     --suppressions=/home/prajwal/CLionProjects/pcp/qa/valgrind-suppress --suppressions=/home/prajwal/CLionProjects/pcp/qa/valgrind-suppress-3.11.0 --vgdb=no --show-leak-kinds=definite 	     --log-fd=1'
++ which pmseries
++ which redis-cli
++ redis-cli ping
++ sts=0
+++ cat /home/prajwal/CLionProjects/pcp/qa/1211.err
++ msg=
++ rm -f /home/prajwal/CLionProjects/pcp/qa/1211.err
++ '[' 0 -eq 0 ']'
++ status=1
++ series=unknown
+++ hostname
++ hostname=prajwal-VirtualBox
++ /usr/bin/sudo -E rm -rf /tmp/1211-18285 '/tmp/1211-18285.*' 1211.full
++ trap '_cleanup; exit $status' 0 1 2 3 15
++ echo 'Clearing local cache ...'
+Clearing local cache ...
++ redis-cli flushall
+OK
++ echo
+
++ echo 'Verify basic load from proc archive'
+Verify basic load from proc archive
++ _filter_source
++ sed -e s,/home/prajwal/CLionProjects/pcp/qa,PATH,g -e s,prajwal-VirtualBox,QAHOST,g
++ pmseries --load '{source.path: "/home/prajwal/CLionProjects/pcp/qa/archives/proc"}'
++ echo
+
++ echo 'List all metric names ...'
+List all metric names ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries -m
++ echo
+
++ echo 'List all label names ...'
+List all label names ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries -l
++ echo
+
++ echo 'List all context names ...'
+List all context names ...
++ LC_COLLATE=POSIX
++ sort
++ _filter_source
++ sed -e s,/home/prajwal/CLionProjects/pcp/qa,PATH,g -e s,prajwal-VirtualBox,QAHOST,g
++ pmseries -c
++ echo
+
++ echo 'List all instance names ...'
+List all instance names ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries -i
++ echo
+
++ echo 'Perform simple name-based query ...'
+Perform simple name-based query ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries kernel.all.pswitch
++ echo
+
++ echo 'Perform simple label-based query ...'
+Perform simple label-based query ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries 'kernel.all.load{hostname=="bozo-laptop"}'
++ echo
+
++ echo 'Perform simple instance-based query ...'
+Perform simple instance-based query ...
++ pmseries 'kernel.all.load{instance.name:"1 minute"}'
+1211: line 81: 18388 Segmentation fault      (core dumped) pmseries 'kernel.all.load{instance.name:"1 minute"}'
++ echo
+
++ echo 'Perform globbing name-based query (1) ...'
+Perform globbing name-based query (1) ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries 'kernel.all.ps*'
++ echo
+
++ echo 'Perform globbing name-based query (2) ...'
+Perform globbing name-based query (2) ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries 'kernel*pswitch'
++ echo
+
++ echo 'Perform globbing name-based query (3) ...'
+Perform globbing name-based query (3) ...
++ LC_COLLATE=POSIX
++ sort
++ pmseries 'kernel.all.l*d'
++ echo
+
++ echo 'Perform globbing instance-based query (1) ...'
+Perform globbing instance-based query (1) ...
++ pmseries 'kernel.all.load{instance.name:"1*"}'
+1211: line 97: 18411 Segmentation fault      (core dumped) pmseries 'kernel.all.load{instance.name:"1*"}'
++ echo
+
++ echo 'Perform globbing instance-based query (2) ... no result'
+Perform globbing instance-based query (2) ... no result
++ pmseries 'kernel.all.load{instance.name:"1\*"}'
+1211: line 101: 18416 Segmentation fault      (core dumped) pmseries 'kernel.all.load{instance.name:"1\*"}'
++ echo '(expect no result)'
+(expect no result)
++ echo
+
++ echo 'Perform globbing instance-based query (3) ...'
+Perform globbing instance-based query (3) ...
++ pmseries 'kernel.all.load{instance.name:"*1*"}'
+1211: line 106: 18421 Segmentation fault      (core dumped) pmseries 'kernel.all.load{instance.name:"*1*"}'
++ echo
+
++ series=3d372f871a4dd73028a7a4f0b05cb927c462b7b8
++ echo 'Descriptor lookup for a given SeriesID ...'
+Descriptor lookup for a given SeriesID ...
++ pmseries --desc 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 112: 18426 Segmentation fault      (core dumped) pmseries --desc $series
++ echo
+
++ echo 'Full InDom only for a given SeriesID ...'
+Full InDom only for a given SeriesID ...
++ pmseries --fullindom 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 116: 18431 Segmentation fault      (core dumped) pmseries --fullindom $series
++ echo
+
++ echo 'Full PMID only for a given SeriesID ...'
+Full PMID only for a given SeriesID ...
++ pmseries --fullpmid 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 120: 18436 Segmentation fault      (core dumped) pmseries --fullpmid $series
++ echo
+
++ echo 'All three lookups for a given SeriesID ...'
+All three lookups for a given SeriesID ...
++ pmseries -dIM 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 124: 18441 Segmentation fault      (core dumped) pmseries -dIM $series
++ echo
+
++ echo 'SourceID lookup for a given SeriesID ...'
+SourceID lookup for a given SeriesID ...
++ pmseries --source 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 128: 18446 Segmentation fault      (core dumped) pmseries --source $series
++ echo
+
++ echo 'Instances lookup for a given SeriesID ...'
+Instances lookup for a given SeriesID ...
++ pmseries --instances 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 132: 18451 Segmentation fault      (core dumped) pmseries --instances $series
++ echo
+
++ echo 'Labels lookup for a given SeriesID ...'
+Labels lookup for a given SeriesID ...
++ pmseries --labels 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 136: 18456 Segmentation fault      (core dumped) pmseries --labels $series
++ echo
+
++ echo 'All lookups for a given SeriesID ...'
+All lookups for a given SeriesID ...
++ pmseries --all 3d372f871a4dd73028a7a4f0b05cb927c462b7b8
+1211: line 140: 18461 Segmentation fault      (core dumped) pmseries --all $series
++ echo
+
++ echo 'Values fetch for a single-valued query ...'
+Values fetch for a single-valued query ...
++ pmseries 'kernel.all.pswitch[count: 30]'
+1211: line 144: 18466 Segmentation fault      (core dumped) pmseries 'kernel.all.pswitch[count: 30]'
++ echo
+
++ echo 'Values fetch for a multi-valued query ...'
+Values fetch for a multi-valued query ...
++ pmseries 'kernel.all.load[count: 30]'
+1211: line 148: 18471 Segmentation fault      (core dumped) pmseries 'kernel.all.load[count: 30]'
++ echo
+
++ exit
++ _cleanup
++ cd /home/prajwal/CLionProjects/pcp/qa
++ /usr/bin/sudo -E rm -rf /tmp/1211-18285 '/tmp/1211-18285.*'
++ exit 1

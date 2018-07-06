@@ -153,16 +153,15 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     char *Clientcommand = malloc(sdslen(tempbuf));
     strcpy(Clientcommand, tempbuf);
 
-//    redis_async_init(hostspec);
+    expectedslots = redis_init(hostspec);
+    desiredcontex = redisAsyncGet(expectedslots,command,keys);
 
-//    desiredcontex = redisAsyncGet(expectedslots,command,keys);
+    if (desiredcontex->err) {
+        printf("Error: %s\n", desiredcontex->errstr);
+        return;
+    }
 
-//    if (desiredcontex->err) {
-//        printf("Error: %s\n", desiredcontex->errstr);
-//        return;
-//    }
-
-    r = redisAsyncFormattedCommand(data->redisAsyncContext , getCallback, (char*)"end-1",Clientcommand,strlen(Clientcommand));
+    r = redisAsyncFormattedCommand(desiredcontex , getCallback, (char*)"end-1",Clientcommand,strlen(Clientcommand));
     assert(r==0);
     fp=fopen(logfile,"a+");
     fputs(command,fp);

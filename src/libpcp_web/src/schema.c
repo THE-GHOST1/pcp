@@ -56,7 +56,7 @@ enum {
 };
 
 static void
-redis_load_scripts(redisContext *redis, void *arg)
+redis_load_scripts(redisAsyncContext *redis, void *arg)
 {
     redisReply		*reply;
     redisScript		*script;
@@ -71,7 +71,7 @@ redis_load_scripts(redisContext *redis, void *arg)
 	cmd = redis_param_str(cmd, script->text, strlen(script->text));
 
 	/* Note: needs to be executed on all Redis instances */
-	if (redisAppendFormattedCommand(redis, cmd, sdslen(cmd)) != REDIS_OK) {
+	if (redisAsyncFormattedCommand(redis, NULL, NULL,cmd, sdslen(cmd)) != REDIS_OK) {
 	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d] setup\n%s\n",
 			    i, script->text);
 	    exit(1);	/* TODO: propogate error */
@@ -81,7 +81,7 @@ redis_load_scripts(redisContext *redis, void *arg)
 
     for (i = 0; i < NSCRIPTS; i++) {
 	script = &scripts[i];
-	sts = redisGetReply(redis, (void **)&reply);
+//	sts = redisGetReply(redis, (void **)&reply);
 	if (sts != REDIS_OK || reply->type != REDIS_REPLY_STRING) {
 	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d]: %s\n%s\n",
 			    i, reply->str, script->text);
@@ -98,6 +98,27 @@ redis_load_scripts(redisContext *redis, void *arg)
     }
 
 }
+int
+redis_async_submitcb(redisSlots *redis, const char *command, sds key, sds cmd, redis_callback callback, void *arg)
+{
+    redisAsyncContext   *Asynccontext = redisAsyncGet(redis, command, key);
+    redisReply		*reply;
+    int			sts;
+
+    if (UNLIKELY(pmDebugOptions.desperate))
+        fputs(cmd, stderr);
+
+    sts = redisAsyncFormattedCommand(Asynccontext, callback, NULL, cmd, sdslen(cmd));
+
+    if (key)
+        sdsfree(key);
+    sdsfree(cmd);
+    if (sts != REDIS_OK)
+        return -ENOMEM;
+
+    return 0;
+}
+
 
 int
 redis_submitcb(redisSlots *redis, const char *command, sds key, sds cmd,
@@ -799,7 +820,7 @@ redis_update_version(redisSlots *redis, void *arg)
     cmd = redis_param_str(cmd, SETS, SETS_LEN);
     cmd = redis_param_sds(cmd, key);
     cmd = redis_param_str(cmd, ver, sizeof(ver)-1);
-    redis_submitcb(redis, SETS, key, cmd, redis_update_version_callback, arg);
+    redis_async_submitcb(redis, SETS, key, cmd, redis_update_version_callback, arg);
 }
 
 static void
@@ -842,7 +863,7 @@ redis_load_version(redisSlots *redis, void *arg)
     cmd = redis_command(2);
     cmd = redis_param_str(cmd, GETS, GETS_LEN);
     cmd = redis_param_sds(cmd, key);
-    redis_submitcb(redis, GETS, key, cmd, redis_load_version_callback, arg);
+    redis_async_submitcb(redis, GETS, key, cmd, redis_load_version_callback, arg);
 }
 
 static int
@@ -956,7 +977,7 @@ redis_load_slots(redisSlots *redis, void *arg)
     cmd = redis_command(2);
     cmd = redis_param_str(cmd, CLUSTER, CLUSTER_LEN);
     cmd = redis_param_str(cmd, "SLOTS", sizeof("SLOTS")-1);
-    redis_submitcb(redis, CLUSTER, NULL, cmd, redis_load_slots_callback, arg);
+    redis_async_submitcb(redis, CLUSTER, NULL, cmd, redis_load_slots_callback, arg);
     return 0;
 }
 
@@ -972,12 +993,12 @@ redis_init(sds server)
 	setup = 1;
     }
 
-    if ((slots = redisSlotsInit(server, NULL)) == NULL)
+    if ((slots = redisAsyncSlotsInit(server)) == NULL)
         exit(1);
 
     redis_load_slots(slots, NULL);
-    redis_load_version(slots, NULL);
-    redis_load_scripts(slots->control, NULL);
+   // redis_load_version(slots, NULL);
+  //  redis_load_scripts(slots->control, NULL);
 
     return slots;
 }

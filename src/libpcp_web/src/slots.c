@@ -68,7 +68,7 @@ slotsCompare(const void *pa, const void *pb)
     return 0;
 }
 
-redisSlots
+int
 redisSlotRangeInsert(redisSlots *redis, redisSlotRange *range)
 {
     int		j;
@@ -87,10 +87,10 @@ redisSlotRangeInsert(redisSlots *redis, redisSlotRange *range)
     for (j = 0; j < range->nslaves; j++)
         printf("\tSlave%u: %s\n", j, range->slaves[j].hostspec);
 
-    tsearch((const void *)range, (void **)&redis->slots, slotsCompare);
+    if(tsearch((const void *)range, (void **)&redis->slots, slotsCompare))
+        return 0;
 
-    return redis;
-  //  return -ENOMEM;
+    return -ENOMEM;
 }
 
 static void

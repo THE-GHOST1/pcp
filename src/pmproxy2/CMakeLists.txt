@@ -2,28 +2,19 @@ cmake_minimum_required(VERSION 3.5)
 project(pmproxy2)
 
 set(CMAKE_C_STANDARD 11)
-
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 include_directories("${PROJECT_SOURCE_DIR}")
 
-#set(SOURCES pmproxy2.c client.c ${PROJECT_SOURCE_DIR}/CommandKeys.h)
+
+include_directories(../libpcp_web/src/)
+include_directories(../external/)
 
 add_executable(
         pmproxy2
-        pmproxy2.c
-        CommandKeys.c
-        ../libpcp_web/src/slots.c
-        ../libpcp_web/src/redis.c
-        ../libpcp_web/src/schema.c
-        ../libpcp_web/src/maps.c
-        ../libpcp_web/src/net.c
-        ../libpcp_web/src/load.c
-        ../libpcp_web/src/libuv.c
-        ../libpcp_web/src/util.c
-        ../external/crc16.c
-        ../libpcp_web/src/query.c
+        src/pmproxy2.c
+        src/CommandKeys.c)
 
-)
-add_executable(libuvclient client.c)
+set(LIB_DIR /home/prajwal/CLionProjects/pcp/src)
 
-target_link_libraries(libuvclient  -luv -lpcp -lpcp_web -lpcp_pmda -lpcp_gui -lpcp_import -lpcp_mmv -lpcp_trace -pthread -ldl -lm)
-target_link_libraries(pmproxy2 -luv -lpcp -lpcp_web -lpcp_pmda -lpcp_gui -lpcp_import -lpcp_mmv -lpcp_trace -pthread -ldl -lm)
+#target_link_libraries(libuvclient -luv -L${LIB_DIR} -lpcp -L${LIB_DIR}/libpcp_web/src/ -lpcp_web /usr/lib/libpcp_pmda.a -lpcp_gui -lpcp_import -lpcp_mmv -lpcp_trace -pthread -ldl -lm)
+target_link_libraries(pmproxy2 -luv -L${LIB_DIR} -lpcp -L${LIB_DIR}/libpcp_web/src/ -lpcp_web /usr/lib/libpcp_pmda.a -lpcp_gui -lpcp_import -lpcp_mmv -lpcp_trace -pthread -ldl -lm)

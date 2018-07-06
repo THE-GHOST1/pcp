@@ -1,0 +1,1 @@
+/usr/bin/cc  -g   CMakeFiles/pmproxy2.dir/src/pmproxy2.c.o CMakeFiles/pmproxy2.dir/src/CommandKeys.c.o  -o pmproxy2 -luv -L/home/prajwal/CLionProjects/pcp/src -lpcp -L/home/prajwal/CLionProjects/pcp/src/libpcp_web/src/ -lpcp_web /usr/lib/libpcp_pmda.a -lpcp_gui -lpcp_import -lpcp_mmv -lpcp_trace -pthread -ldl -lm 

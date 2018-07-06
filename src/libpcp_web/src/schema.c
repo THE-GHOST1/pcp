@@ -997,8 +997,8 @@ redis_init(sds server)
         exit(1);
 
     redis_load_slots(slots, NULL);
-   // redis_load_version(slots, NULL);
-  //  redis_load_scripts(slots->control, NULL);
+    redis_load_version(slots, NULL);
+    redis_load_scripts(slots->Asynccontrol, NULL);
 
     return slots;
 }

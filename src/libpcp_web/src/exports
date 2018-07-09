@@ -88,6 +88,8 @@ PCP_WEB_1.7 {
     redisAsyncSlotsInit;
     redisReaderGetReply;
     redisGet;
+    redisGetReply;
+    redisAppendFormattedCommand;
     freeReplyObject;
     redisAsyncSetConnectCallBack;
     redisAsyncSetDisconnectCallBack;

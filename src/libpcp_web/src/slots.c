@@ -198,7 +198,7 @@ redisAsyncGet(redisSlots *redis, const char *command, sds key)
     void		*p;
 
     if (key == NULL)
-        return redis->control;
+        return redis->Asynccontrol;
 
     slot = keySlot(key, sdslen(key));
     s.start = s.end = slot;

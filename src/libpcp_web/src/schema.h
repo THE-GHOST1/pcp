@@ -18,6 +18,7 @@
 #include "redis.h"
 #include "private.h"
 #include "slots.h"
+#include "uv.h"
 
 #define EVALSHA		"EVALSHA"
 #define EVALSHA_LEN	(sizeof(EVALSHA)-1)
@@ -94,7 +95,7 @@ extern int redis_submitcb(redisSlots *, const char *, sds, sds,
 			redis_callback, void *);
 extern int redis_submit(redisSlots *, const char *, sds, sds);
 
-extern redisSlots *redis_init(sds);
+extern redisSlots *redis_init(sds, void *);
 extern redisContext *redis_connect(char *, struct timeval *);
 extern void redis_stop(redisContext *);
 

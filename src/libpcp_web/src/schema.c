@@ -24,12 +24,38 @@
 
 typedef void (*redis_callback)(redisSlots *, redisReply *, void *);
 
+typedef struct {
+    uv_write_t req;
+    uv_buf_t buf;
+} write_req_t;
+
+
 typedef struct redis_script {
     const char		*text;
     sds			hash;
 } redisScript;
 
 static int duplicates;	/* TODO: add counter to individual contexts */
+
+static void
+connectCallback(const redisAsyncContext *c, int status) {
+    if (status != REDIS_OK) {
+        printf("Error: %s\n", c->errstr);
+        return;
+    }
+    //  printf("Connected...\n");
+}
+
+static void
+disconnectCallback(const redisAsyncContext *c, int status) {
+    if (status != REDIS_OK)
+    {
+        printf("Error: %s\n", c->errstr);
+        return;
+    }
+    // printf("\nDisconnected...\n");
+}
+
 
 static redisScript scripts[] = {
 /* Script HASH_MAP_ID pcp:map:<name> , <string> -> ID
@@ -71,7 +97,7 @@ redis_load_scripts(redisAsyncContext *redis, void *arg)
 	cmd = redis_param_str(cmd, script->text, strlen(script->text));
 
 	/* Note: needs to be executed on all Redis instances */
-	if (redisAsyncFormattedCommand(redis, NULL, NULL,cmd, sdslen(cmd)) != REDIS_OK) {
+	if (redis_async_submitcb(redis, NULL, NULL,cmd, NULL, NULL) != REDIS_OK) {
 	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d] setup\n%s\n",
 			    i, script->text);
 	    exit(1);	/* TODO: propogate error */
@@ -82,11 +108,11 @@ redis_load_scripts(redisAsyncContext *redis, void *arg)
     for (i = 0; i < NSCRIPTS; i++) {
 	script = &scripts[i];
 //	sts = redisGetReply(redis, (void **)&reply);
-	if (sts != REDIS_OK || reply->type != REDIS_REPLY_STRING) {
-	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d]: %s\n%s\n",
-			    i, reply->str, script->text);
-	    exit(1);	/* TODO: propogate error */
-	}
+//	if (sts != REDIS_OK || reply->type != REDIS_REPLY_STRING) {
+//	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d]: %s\n%s\n",
+//			    i, reply->str, script->text);
+//	    exit(1);	/* TODO: propogate error */
+//	}
 	if ((scripts[i].hash = sdsnew(reply->str)) == NULL) {
 	    fprintf(stderr, "Failed to save LUA script SHA1 hash\n");
 	    exit(1);	/* TODO: propogate error */
@@ -108,7 +134,15 @@ redis_async_submitcb(redisSlots *redis, const char *command, sds key, sds cmd, r
     if (UNLIKELY(pmDebugOptions.desperate))
         fputs(cmd, stderr);
 
-    sts = redisAsyncFormattedCommand(Asynccontext, callback, NULL, cmd, sdslen(cmd));
+    redisEventAttach(Asynccontext, uv_default_loop());
+    redisAsyncSetConnectCallBack(Asynccontext, connectCallback);
+    redisAsyncSetDisconnectCallBack(Asynccontext,disconnectCallback);
+
+
+    redisAsyncFormattedCommand(Asynccontext, callback, arg, cmd, sdslen(cmd));
+
+
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
     if (key)
         sdsfree(key);
@@ -866,6 +900,93 @@ redis_load_version(redisSlots *redis, void *arg)
     redis_async_submitcb(redis, GETS, key, cmd, redis_load_version_callback, arg);
 }
 
+sds
+ProcessRedisReply(redisReply *reply) {
+
+    /*
+     * Returns a sds string of Redis reply in RESP format.
+    */
+
+    sds             end_line;
+    sds             sdsbuffer;
+    end_line = sdsempty();
+    end_line = sdscat(end_line, "\r\n");
+    sdsbuffer = sdsempty();
+    if (reply == NULL) sdsbuffer;
+    switch ((reply->type)) {
+        case 1 : {
+            //REDIS_REPLY_STRING
+            sds sometempbuf = sdsfromlonglong((strlen(reply->str)));
+            sdsbuffer = sdscat(sdsbuffer, "$");
+            sdsbuffer = sdscat(sdsbuffer, sometempbuf);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            sdsbuffer = sdscat(sdsbuffer, reply->str);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            sdsfree(sometempbuf);
+            return sdsbuffer;
+        }
+        case 2 : {
+            //REDIS_REPLY_ARRAY
+            int64_t i;
+            sds sometempbuf = sdsfromlonglong(((redisReply *) reply)->elements);
+            sdsbuffer = sdscat(sdsbuffer, "*");
+            sdsbuffer = sdscat(sdsbuffer, sometempbuf);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            for (i = 0; i < ((redisReply *) reply)->elements; i++) {
+                sdsbuffer = sdscat(sdsbuffer, ProcessRedisReply((redisReply *) reply->element[i]));
+            }
+            sdsfree(sometempbuf);
+            return sdsbuffer;
+        }
+        case 3: {
+            //REDIS_REPLY_INTEGER
+            sds sometempbuf = sdsfromlonglong(reply->integer);
+            sdsbuffer = sdscat(sdsbuffer, ":");
+            sdsbuffer = sdscat(sdsbuffer, sometempbuf);
+            sdsbuffer = sdscat(sdsbuffer, end_line );
+            sdsfree(sometempbuf);
+            return sdsbuffer;
+        }
+        case 4 : {
+            //REDIS_REPLY_NULL
+            sdsbuffer = sdscat(sdsbuffer, "");
+            return sdsbuffer;
+        }
+        case 5: {
+            //REDIS_REPLY_STATUS
+            sdsbuffer = sdscat(sdsbuffer, "+");
+            sdsbuffer = sdscat(sdsbuffer, reply->str);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            return sdsbuffer;
+        }
+        default: {
+            //REDIS_REPLY_ERROR
+            sdsbuffer = sdscat(sdsbuffer, "-");
+            sdsbuffer = sdscat(sdsbuffer, reply->str);
+            sdsbuffer = sdscat(sdsbuffer, end_line);
+            return sdsbuffer;
+        }
+    }
+}
+
+
+
+
+static void
+getCallback(redisSlots *redis, redisReply *reply, void *arg){
+    int                         len;
+    int                         i;
+
+    sds s = sdsempty();
+
+    if (reply == NULL) return;
+
+    s = ProcessRedisReply(reply);
+    printf("%s",s);
+    //  sdsfree(s);
+}
+
+
 static int
 decodeRedisNode(redisSlots *redis, redisReply *reply, redisSlotServer *server)
 {
@@ -944,10 +1065,15 @@ decodeRedisSlots(redisSlots *redis, redisReply *reply)
 	    decodeRedisSlot(redis, slot);
     }
 }
-
 static void
-redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg)
+redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void *data)
 {
+
+    redisAsyncContext                   *desiredcontex;
+    sds                                 keys;
+
+    keys = sdsnew("key");
+
     /* Case where we're dealing with a single redis intance) */
     sds single = sdsnew("ERR This instance has cluster support disabled");
     redisSlotServer	*servers = NULL;
@@ -966,10 +1092,26 @@ redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg)
     }
     else if (checkArray(reply, "%s %s", CLUSTER, "SLOTS") == 0)
 	decodeRedisSlots(redis, reply);
-    freeReplyObject(reply);
+//    freeReplyObject(reply);
+//    uv_stop(uv_default_loop());
+//    uv_loop_close(uv_default_loop());
+
+    desiredcontex = redisAsyncGet(redis,(const char*)arg,keys);
+
+    if (desiredcontex->err) {
+        printf("Error: %s\n", desiredcontex->errstr);
+        return;
+    }
+
+    redisEventAttach(desiredcontex, uv_default_loop());
+    redisAsyncSetConnectCallBack(desiredcontex, connectCallback);
+    redisAsyncSetDisconnectCallBack(desiredcontex,disconnectCallback);
+    redisAsyncFormattedCommand(desiredcontex , getCallback, (char*)"end-1",((const char*)arg),(strlen((const char*)arg)));
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
 }
 
-static int
+int
 redis_load_slots(redisSlots *redis, void *arg)
 {
     sds			cmd;
@@ -982,7 +1124,7 @@ redis_load_slots(redisSlots *redis, void *arg)
 }
 
 redisSlots *
-redis_init(sds server)
+redis_init(sds server, void *command)
 {
     redisSlots          *slots;
 
@@ -996,9 +1138,9 @@ redis_init(sds server)
     if ((slots = redisAsyncSlotsInit(server)) == NULL)
         exit(1);
 
-    redis_load_slots(slots, NULL);
-    redis_load_version(slots, NULL);
-    redis_load_scripts(slots->Asynccontrol, NULL);
+    redis_load_slots(slots, command);
+//    redis_load_version(slots, NULL);
+//    redis_load_scripts(slots->Asynccontrol, NULL);
 
     return slots;
 }

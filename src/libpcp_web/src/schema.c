@@ -24,6 +24,14 @@
 
 typedef void (*redis_callback)(redisSlots *, redisReply *, void *);
 
+struct ClientRequestData {
+    redisAsyncContext *redisAsyncContext;
+    sds ip;
+    uv_tcp_t *client;
+    int64_t ClientID; //Internal implementaion
+};
+
+
 typedef struct {
     uv_write_t req;
     uv_buf_t buf;
@@ -97,11 +105,11 @@ redis_load_scripts(redisAsyncContext *redis, void *arg)
 	cmd = redis_param_str(cmd, script->text, strlen(script->text));
 
 	/* Note: needs to be executed on all Redis instances */
-	if (redis_async_submitcb(redis, NULL, NULL,cmd, NULL, NULL) != REDIS_OK) {
-	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d] setup\n%s\n",
-			    i, script->text);
-	    exit(1);	/* TODO: propogate error */
-	}
+//	if (redis_async_submitcb(redis, NULL, NULL,cmd, NULL, NULL, NULL) != REDIS_OK) {
+//	    fprintf(stderr, "Failed to LOAD Redis LUA script[%d] setup\n%s\n",
+//			    i, script->text);
+//	    exit(1);	/* TODO: propogate error */
+//	}
 	sdsfree(cmd);
     }
 
@@ -117,7 +125,7 @@ redis_load_scripts(redisAsyncContext *redis, void *arg)
 	    fprintf(stderr, "Failed to save LUA script SHA1 hash\n");
 	    exit(1);	/* TODO: propogate error */
 	}
-	freeReplyObject(reply);
+
 
 	if (pmDebugOptions.series)
 	    fprintf(stderr, "Registered script[%d] as %s\n", i, script->hash);
@@ -125,7 +133,7 @@ redis_load_scripts(redisAsyncContext *redis, void *arg)
 
 }
 int
-redis_async_submitcb(redisSlots *redis, const char *command, sds key, sds cmd, redis_callback callback, void *arg)
+redis_async_submitcb(redisSlots *redis, const char *command, sds key, sds cmd, redis_callback callback, void *arg, void *handle)
 {
     redisAsyncContext   *Asynccontext = redisAsyncGet(redis, command, key);
     redisReply		*reply;
@@ -840,11 +848,11 @@ static void
 redis_update_version_callback(redisSlots *redis, redisReply *reply, void *arg)
 {
     checkStatusOK(reply, "%s setup", "pcp:version:schema");
-    freeReplyObject(reply);
+    redis_load_scripts(redis->Asynccontrol,arg);
 }
 
 static void
-redis_update_version(redisSlots *redis, void *arg)
+redis_update_version(redisSlots *redis, void *arg, void *handle)
 {
     sds			cmd, key;
     const char		ver[] = TO_STRING(SCHEMA_VERSION);
@@ -854,7 +862,7 @@ redis_update_version(redisSlots *redis, void *arg)
     cmd = redis_param_str(cmd, SETS, SETS_LEN);
     cmd = redis_param_sds(cmd, key);
     cmd = redis_param_str(cmd, ver, sizeof(ver)-1);
-    redis_async_submitcb(redis, SETS, key, cmd, redis_update_version_callback, arg);
+    redis_async_submitcb(redis, SETS, key, cmd, redis_update_version_callback, arg, handle);
 }
 
 static void
@@ -881,15 +889,17 @@ redis_load_version_callback(redisSlots *redis, redisReply *reply, void *arg)
 		pmGetProgname(), redis_reply(reply->type));
 	exit(1);
     }
-    freeReplyObject(reply);
+
 
     /* set the version when none found (first time through) */
     if (version != SCHEMA_VERSION)
-	redis_update_version(redis, arg);
+	redis_update_version(redis, arg, NULL);
+
+    redis_load_scripts(redis->Asynccontrol,arg);
 }
 
 static void
-redis_load_version(redisSlots *redis, void *arg)
+redis_load_version(redisSlots *redis, void *arg, void *handle)
 {
     sds			cmd, key;
 
@@ -897,7 +907,7 @@ redis_load_version(redisSlots *redis, void *arg)
     cmd = redis_command(2);
     cmd = redis_param_str(cmd, GETS, GETS_LEN);
     cmd = redis_param_sds(cmd, key);
-    redis_async_submitcb(redis, GETS, key, cmd, redis_load_version_callback, arg);
+    redis_async_submitcb(redis, GETS, key, cmd, redis_load_version_callback, arg, handle);
 }
 
 sds
@@ -969,11 +979,30 @@ ProcessRedisReply(redisReply *reply) {
     }
 }
 
+static void
+on_close_cb(uv_handle_t *handle) {
+    free(handle);
+}
 
+static void
+after_write(uv_write_t *req, int status) {
+    write_req_t *wr = (write_req_t *) req;
+    if (wr->buf.base != NULL) {}
+    //  free(wr);
+    if (status == 0) return;
+    fprintf(stderr, "uv_write error: %s\n", uv_strerror(status));
+    if (status == UV_ECANCELED) return;
+    assert(status == UV_EPIPE);
+
+    uv_close((uv_handle_t *) req->handle, on_close_cb);
+}
 
 
 static void
-getCallback(redisSlots *redis, redisReply *reply, void *arg){
+getCallback(redisSlots *redis, redisReply *reply, void *arg , void *handle){
+    struct ClientRequestData    *clientdata;
+    struct ClientRequestData    *clientdata2;
+    redisAsyncContext           *clientcontext;
     int                         len;
     int                         i;
 
@@ -981,8 +1010,16 @@ getCallback(redisSlots *redis, redisReply *reply, void *arg){
 
     if (reply == NULL) return;
 
+    clientdata = (uv_stream_t *)handle->data;
+    clientcontext = clientdata->redisAsyncContext;
+    clientdata2 = clientcontext->data;
+
     s = ProcessRedisReply(reply);
     printf("%s",s);
+
+    write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
+    wr->buf = uv_buf_init(s, sdslen(s));
+    uv_write(&wr->req, clientdata2->client , &wr->buf, 1, after_write);
     //  sdsfree(s);
 }
 
@@ -1066,7 +1103,7 @@ decodeRedisSlots(redisSlots *redis, redisReply *reply)
     }
 }
 static void
-redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void *data)
+redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void *handle)
 {
 
     redisAsyncContext                   *desiredcontex;
@@ -1092,9 +1129,9 @@ redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void
     }
     else if (checkArray(reply, "%s %s", CLUSTER, "SLOTS") == 0)
 	decodeRedisSlots(redis, reply);
-//    freeReplyObject(reply);
-//    uv_stop(uv_default_loop());
-//    uv_loop_close(uv_default_loop());
+
+
+ //   redis_load_version(redis, arg);
 
     desiredcontex = redisAsyncGet(redis,(const char*)arg,keys);
 
@@ -1112,19 +1149,19 @@ redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void
 }
 
 int
-redis_load_slots(redisSlots *redis, void *arg)
+redis_load_slots(redisSlots *redis, void *arg, void *handle)
 {
     sds			cmd;
 
     cmd = redis_command(2);
     cmd = redis_param_str(cmd, CLUSTER, CLUSTER_LEN);
     cmd = redis_param_str(cmd, "SLOTS", sizeof("SLOTS")-1);
-    redis_async_submitcb(redis, CLUSTER, NULL, cmd, redis_load_slots_callback, arg);
+    redis_async_submitcb(redis, CLUSTER, NULL, cmd, redis_load_slots_callback, arg, handle);
     return 0;
 }
 
-redisSlots *
-redis_init(sds server, void *command)
+void
+redis_init(sds server, void *command, void *handle)
 {
     redisSlots          *slots;
 
@@ -1138,11 +1175,7 @@ redis_init(sds server, void *command)
     if ((slots = redisAsyncSlotsInit(server)) == NULL)
         exit(1);
 
-    redis_load_slots(slots, command);
-//    redis_load_version(slots, NULL);
-//    redis_load_scripts(slots->Asynccontrol, NULL);
-
-    return slots;
+    redis_load_slots(slots, command, handle);
 }
 
 void

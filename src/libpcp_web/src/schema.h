@@ -95,7 +95,7 @@ extern int redis_submitcb(redisSlots *, const char *, sds, sds,
 			redis_callback, void *);
 extern int redis_submit(redisSlots *, const char *, sds, sds);
 
-extern redisSlots *redis_init(sds, void *);
+extern void redis_init(sds, void *, void *);
 extern redisContext *redis_connect(char *, struct timeval *);
 extern void redis_stop(redisContext *);
 
@@ -105,5 +105,5 @@ extern void redis_series_mark(redisSlots *, context_t *, sds);
 extern void redis_series_stream(redisSlots *, sds, metric_t *);
 
 
-extern int redis_async_submitcb(redisSlots *,const char *, sds, sds, redis_callback, void *);
+extern int redis_async_submitcb(redisSlots *,const char *, sds, sds, redis_callback, void *, void *);
 #endif	/* SERIES_SCHEMA_H */

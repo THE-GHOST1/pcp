@@ -1,0 +1,76 @@
+#!/bin/sh
+# PCP QA Test No. 1327
+# [QA for pmproxy2]
+#
+# Copyright (c) 2018 [Venkata Naga Prajwal].  All Rights Reserved.
+#
+
+seq=`basename $0`
+echo "QA output created by $seq"
+
+# get standard environment, filters and checks
+. ./common.product
+. ./common.filter
+. ./common.check
+
+# test for-some-thing || _notrun No support for some-thing
+which redis-cli >/dev/null 2>&1 || \
+	_notrun "Redis command line utility not installed"
+
+cd ../src/pmproxy2/ | make >/dev/null 2>&1 || \
+	_notrun "Unable to make Pmproxy2. Please check required dependencies"
+
+
+_cleanup()
+{
+    cd $here
+    $sudo rm -rf $tmp $tmp.*
+}
+
+status=1	# failure is the default!
+$sudo rm -rf $tmp $tmp.* $seq.full
+trap "_cleanup; exit \$status" 0 1 2 3 15
+
+
+
+# real QA test starts here
+#Test #1 multiple clients connecting to pmproxy2 daemon
+#Test #2 multiple clients disconnect from pmproxy2 daemon
+#Test #3 clients send request to redis server
+#Test #4 clients recieve reply from redis server
+
+#Test already existing client
+
+
+declare -a ARRAY
+
+echo "Testing multiple client connections "
+counter = 1
+until [ $counter -gt 10 ]
+do
+    redis-cli -p 44323 get key &
+    ARRAY[$counter]=$! #store the PID
+    ((counter++))
+    echo
+done
+
+
+sleep 10
+
+
+echo "Testing multiple client disconnections"
+for i in "${ARRAY[@]}"
+do
+    kill $i
+done
+
+# if error
+exit
+
+# optional stuff if your test has verbose output to help resolve problems
+#echo
+#echo "If failure, check $seq.full"
+
+# success, all done
+status=0
+exit

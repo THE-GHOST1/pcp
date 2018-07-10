@@ -1170,7 +1170,8 @@ series_solve(settings_t *settings,
     SOLVER	solver = { .settings = settings, .arg = arg };
     SOLVER	*sp = &solver;
 
-    solver.redis = redis_init(sp->settings->hostspec);
+    solver.redis;
+    redis_init(sp->settings->hostspec, NULL, NULL);
 
     /* Resolve label key names (via their map keys) */
     if (pmDebugOptions.series)
@@ -1451,7 +1452,8 @@ series_label_reply(pmSeriesSettings *settings, redisSlots *redis, sds series,
 void
 pmSeriesLabels(pmSeriesSettings *settings, int nseries, pmSID *series, void *arg)
 {
-    redisSlots		*redis = redis_init(settings->hostspec);
+    redisSlots		*redis ;
+    redis_init(settings->hostspec, NULL, NULL);
     redisReply		*reply, *rp;
     const char		*name = redisMapName(labelsrmap);
     redisMap		*map = labelsrmap;
@@ -1570,7 +1572,8 @@ series_metric_name_execute(pmSeriesSettings *settings,
 void
 pmSeriesMetrics(pmSeriesSettings *settings, int nseries, pmSID *series, void *arg)
 {
-    redisSlots		*redis = redis_init(settings->hostspec);
+    redisSlots		*redis ;
+    redis_init(settings->hostspec, NULL, NULL);
     redisReply		*reply, *rp;
     const char		*name = redisMapName(namesrmap);
     redisMap		*map = namesrmap;
@@ -1673,7 +1676,8 @@ void
 pmSeriesDescs(pmSeriesSettings *settings, int nseries, pmSID *series, void *arg)
 {
     pmSeriesDesc	desc;
-    redisSlots		*redis = redis_init(settings->hostspec);
+    redisSlots		*redis ;
+    redis_init(settings->hostspec, NULL, NULL);
     redisReply		*reply;
     sds			cmd, key, msg;
     int			n, rc, sts = 0;
@@ -1884,7 +1888,8 @@ void
 pmSeriesInstances(pmSeriesSettings *settings, int nseries, pmSID *series, void *arg)
 {
     pmSeriesInst	inst;
-    redisSlots		*redis = redis_init(settings->hostspec);
+    redisSlots		*redis ;
+    redis_init(settings->hostspec,NULL, NULL);
     redisReply		*reply, *rp;
     const char		*name = redisMapName(instrmap);
     redisMap		*map = instrmap;
@@ -1989,7 +1994,8 @@ series_context_name_execute(pmSeriesSettings *settings,
 void
 pmSeriesSources(pmSeriesSettings *settings, int nsources, pmSID *sources, void *arg)
 {
-    redisSlots		*redis = redis_init(settings->hostspec);
+    redisSlots		*redis ;
+    redis_init(settings->hostspec, NULL, NULL);
     redisReply		*reply, *rp;
     const char		*name = redisMapName(contextrmap);
     redisMap		*map = contextrmap;

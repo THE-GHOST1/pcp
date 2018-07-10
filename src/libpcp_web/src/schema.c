@@ -1010,16 +1010,16 @@ getCallback(redisSlots *redis, redisReply *reply, void *arg , void *handle){
 
     if (reply == NULL) return;
 
-    clientdata = (uv_stream_t *)handle->data;
-    clientcontext = clientdata->redisAsyncContext;
-    clientdata2 = clientcontext->data;
+//    clientdata = (uv_stream_t *)handle->data;
+//    clientcontext = clientdata->redisAsyncContext;
+//    clientdata2 = clientcontext->data;
 
     s = ProcessRedisReply(reply);
     printf("%s",s);
 
-    write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
-    wr->buf = uv_buf_init(s, sdslen(s));
-    uv_write(&wr->req, clientdata2->client , &wr->buf, 1, after_write);
+//    write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
+//    wr->buf = uv_buf_init(s, sdslen(s));
+//    uv_write(&wr->req, clientdata2->client , &wr->buf, 1, after_write);
     //  sdsfree(s);
 }
 
@@ -1129,7 +1129,6 @@ redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void
     }
     else if (checkArray(reply, "%s %s", CLUSTER, "SLOTS") == 0)
 	decodeRedisSlots(redis, reply);
-
 
  //   redis_load_version(redis, arg);
 

@@ -31,8 +31,6 @@ SYMTARGET = libpmproxy2.$(DSOSUFFIX)
 
 LDIRT = pmproxy2.log
 
-default: $(LIBTARGET) $(SYMTARGET) $(STATICLIBTARGET)
-
 include $(BUILDRULES)
 
 install: default

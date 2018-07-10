@@ -17,7 +17,9 @@ echo "QA output created by $seq"
 which redis-cli >/dev/null 2>&1 || \
 	_notrun "Redis command line utility not installed"
 
-cd ../src/pmproxy2/ | make >/dev/null 2>&1 || \
+cd ../src/pmproxy2/src/
+
+make | ./pmproxy2 >/dev/null 2>&1 || \
 	_notrun "Unable to make Pmproxy2. Please check required dependencies"
 
 

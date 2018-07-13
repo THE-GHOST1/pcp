@@ -20,8 +20,9 @@
 #define SLOTMASK	(MAXSLOTS-1)
 
 typedef struct redisSlotServer {
-    sds			hostspec;	/* hostname:port or unix socket file */
-    redisContext	*redis;
+    sds			        hostspec;	/* hostname:port or unix socket file */
+    redisContext	    *redis;
+    redisAsyncContext   *asyncredis;
 } redisSlotServer;
 
 typedef struct redisSlotRange {
@@ -34,12 +35,18 @@ typedef struct redisSlotRange {
 } redisSlotRange;
 
 typedef struct redisSlots {
-    redisContext	*control;	/* initial Redis context connection */
-    sds			hostspec;	/* control socket host specification */
-    struct timeval	timeout;	/* system wide Redis timeout setting */
-    unsigned int	readonly;	/* expect no load requests (writing) */
-    redisSlotRange	*slots;		/* all instances; e.g. CLUSTER SLOTS */
+    redisContext	   *control;	/* initial Redis context connection */
+    sds			       hostspec;	/* control socket host specification */
+    struct timeval	   timeout;	/* system wide Redis timeout setting */
+    unsigned int	   readonly;	/* expect no load requests (writing) */
+    redisSlotRange	   *slots;		/* all instances; e.g. CLUSTER SLOTS */
+    redisAsyncContext  *asynccontrol;
+
 } redisSlots;
+
+extern redisSlots *redisAsyncSlotsInit(sds );
+extern redisAsyncContext *redisAsyncGet(struct redisSlots *, const char *, sds);
+extern redisAsyncContext *redis_async_connect(sds );
 
 extern redisSlots *redisSlotsInit(sds, struct timeval *);
 extern int redisSlotRangeInsert(struct redisSlots *, struct redisSlotRange *);

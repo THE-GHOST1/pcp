@@ -23,6 +23,19 @@ static char default_server[] = "localhost:6379";
 static struct timeval default_timeout = { 1, 500000 }; /* 1.5 secs */
 
 redisSlots *
+redisAsyncSlotsInit(sds hostspec)
+{
+    redisSlots		*pool;
+
+    if ((pool = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
+    return NULL;
+
+    pool->hostspec = sdsdup(hostspec);
+    pool->asynccontrol = redis_async_connect(hostspec);
+    return pool;
+}
+
+redisSlots *
 redisSlotsInit(sds hostspec, struct timeval *timeout)
 {
     redisSlots		*pool;
@@ -137,6 +150,34 @@ keySlot(const char *key, unsigned int keylen)
     return crc16(key + start + 1, end - start - 1) & SLOTMASK;
 }
 
+
+redisAsyncContext *
+redisAsyncGet(redisSlots *redis, const char *command, sds key)
+{
+    redisSlotServer	*server;
+    redisSlotRange	*range, s;
+    unsigned int	slot;
+    void		*p;
+
+    if (key == NULL)
+        return redis->asynccontrol;
+
+    slot = keySlot(key, sdslen(key));
+    if (UNLIKELY(pmDebugOptions.series))
+    fprintf(stderr, "redisGet[slot=%u] %s %s\n", slot, command, key);
+    s.start = s.end = slot;
+    p = tfind((const void *)&s, (void **)&redis->slots, slotsCompare);
+    if ((range = *(redisSlotRange **)p) == NULL)
+        return NULL;
+
+    range->counter++;
+    server = (range->nslaves == 0 || redis->readonly == 0) ? &range->master
+      : &range->slaves[range->counter % range->nslaves];
+    if (server->redis == NULL)
+        server->redis = redis_async_connect(server->hostspec);
+    return server->redis;
+}
+
 redisContext *
 redisGet(redisSlots *redis, const char *command, sds key)
 {
@@ -150,7 +191,7 @@ redisGet(redisSlots *redis, const char *command, sds key)
 
     slot = keySlot(key, sdslen(key));
     if (UNLIKELY(pmDebugOptions.series))
-	fprintf(stderr, "redisGet[slot=%u] %s %s\n", slot, command, key);
+    fprintf(stderr, "redisGet[slot=%u] %s %s\n", slot, command, key);
     s.start = s.end = slot;
 
     p = tfind((const void *)&s, (void **)&redis->slots, slotsCompare);
@@ -163,6 +204,43 @@ redisGet(redisSlots *redis, const char *command, sds key)
     if (server->redis == NULL)
 	server->redis = redis_connect(server->hostspec, &redis->timeout);
     return server->redis;
+}
+
+redisAsyncContext *
+redis_async_connect(sds input)
+{
+    redisAsyncContext *Asyncredis;
+
+    char *server = malloc(sdslen(input));
+    strcpy(server, input);
+
+    if (server == NULL)
+        server = default_server;
+
+    if (strncmp(server, "unix:", 5) == 0) {
+        Asyncredis = redisAsyncConnectUnix(server + 5);
+    } else {
+        unsigned int	port;
+        char		*endnum, *p;
+        char		hostname[MAXHOSTNAMELEN];
+
+        pmsprintf(hostname, sizeof(hostname), "%s", server);
+        if ((p = rindex(hostname, ':')) == NULL) {
+            port = 6379;  /* default redis port */
+        } else {
+            port = (unsigned int)strtoul(p + 1, &endnum, 10);
+            if (*endnum != '\0')
+                port = 6379;
+            else
+                *p = '\0';
+        }
+        Asyncredis = redisAsyncConnect(hostname, port);
+    }
+    if (Asyncredis->err) {
+        printf("Error: %s\n", Asyncredis->errstr);
+        return;
+    }
+    return Asyncredis;
 }
 
 redisContext *
@@ -210,4 +288,7 @@ redis_connect(char *server, struct timeval *timeout)
     /* redisSetTimeout(redis, *timeout); */
     redisEnableKeepAlive(redis);
     return redis;
+
 }
+
+

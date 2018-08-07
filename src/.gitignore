@@ -5,3 +5,4 @@
 *.1.gz
 *.icns
 exports.solaris
+/pmproxy2/CMakeLists.txt

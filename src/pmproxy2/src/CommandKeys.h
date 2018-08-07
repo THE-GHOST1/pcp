@@ -12,14 +12,19 @@
 #include <signal.h>
 #include <errno.h>
 #include <limits.h>
-#include <../libpcp_web/src/redis.h>
-#include <../libpcp_web/src/net.h>
-#include <../libpcp_web/src/sdsalloc.h>
-#include <../libpcp_web/src/slots.h>
-#include <../libpcp_web/src/libuv.h>
+#include <redis.h>
+#include <net.h>
+#include <sdsalloc.h>
+#include <slots.h>
+#include <libuv.h>
 
+typedef struct keystruct {
+    sds keysinposone;
+    sds keysinposx;
+} keystruct;
 
-sds GetCommandKey(redisReply *reply);
-sds ProcessRedisReply(redisReply *reply);
+extern void loadkeystruct(redisReply *reply);
+extern sds GetCommandKey(redisReply *reply);
+extern sds ProcessRedisReply(redisReply *reply);
 
 #endif //PMPROXY2_COMMANDKEYS_H

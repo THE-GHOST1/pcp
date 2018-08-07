@@ -436,6 +436,7 @@ ClientLoop(void)
     for (;;) {
 	/* Figure out which file descriptors to wait for input on.  Keep
 	 * track of the highest numbered descriptor for the select call.
+	 * todo making this Async
 	 */
 	readableFds = sockFds;
 	maxFd = maxSockFd + 1;

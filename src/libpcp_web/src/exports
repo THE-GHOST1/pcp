@@ -110,4 +110,6 @@ PCP_WEB_1.7 {
     redis_init;
     redis_async_connect;
     redis_async_init;
+    ProcessRedisReply;
+    GetCommandKey;
 } PCP_WEB_1.6;

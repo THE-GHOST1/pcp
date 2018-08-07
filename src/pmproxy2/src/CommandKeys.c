@@ -2,6 +2,8 @@
 
 sds sdsbuffer;
 
+keystruct *keys;
+
 static void
 ConnectCallBack(const redisAsyncContext *c, int status) {
     if (status != REDIS_OK) {
@@ -19,6 +21,104 @@ DisconnectCallBack(const redisAsyncContext *c, int status) {
         return;
     }
     // printf("Disconnected...\n");
+}
+
+static void
+checkError(redisReply *reply, const char *format, va_list argp)
+{
+    /* TODO: needs to be passed to info callbacks not stderr */
+    fputs("Error: ", stderr);
+    vfprintf(stderr, format, argp);
+    if (reply && reply->type == REDIS_REPLY_ERROR)
+        fprintf(stderr, "\nRedis: %s\n", reply->str);
+    else
+        fputc('\n', stderr);
+}
+
+static int
+checkString(redisReply *reply, const char *format, ...)
+{
+    if (reply && reply->type == REDIS_REPLY_STRING) {
+        return reply->str;
+    } else if (!reply || reply->type != REDIS_REPLY_ERROR) {
+        va_list	argp;
+        va_start(argp, format);
+        checkError(reply, format, argp);
+        va_end(argp);
+    }
+    return -1;
+}
+
+static int
+checkArray(redisReply *reply, const char *format, ...)
+{
+    if (reply && reply->type == REDIS_REPLY_ARRAY) {
+        return 0;
+    } else if (!reply || reply->type != REDIS_REPLY_ERROR) {
+        va_list	argp;
+        va_start(argp, format);
+        checkError(reply, format, argp);
+        va_end(argp);
+    }
+    return -1;
+}
+
+static long long
+checkInteger(redisReply *reply, const char *format, ...)
+{
+    if (reply && reply->type == REDIS_REPLY_INTEGER) {
+        return reply->integer;
+    } else {
+        va_list	argp;
+        va_start(argp, format);
+        checkError(reply, format, argp);
+        va_end(argp);
+    }
+    return -1;
+}
+
+static int
+decodeRedisKey(keystruct *keys, redisReply *reply)
+{
+    redisReply		*node;
+    sds             currentcommand;
+    int			i, n;
+
+    currentcommand = sdsempty();
+    /* expecting command name, pos of key , array of characteristics ,start and end of key , step count */
+
+    node = reply->element[0];
+    if ((currentcommand = checkString(node, "%s name", "Key")) < 0)
+        return -EINVAL;
+
+    node = reply->element[3];
+    if ((n = (__uint32_t)checkInteger(node, "%s first", "Key")) < 0)
+        return -EINVAL;
+
+    if(n == 1) {
+        keys->keysinposone = sdscat(keys->keysinposone, currentcommand);
+        keys->keysinposone = sdscat(keys->keysinposone, " ");
+    }
+    else if(n > 0 && n != 1) {
+        keys->keysinposx = sdscat(keys->keysinposx, currentcommand);
+        keys->keysinposx = sdscat(keys->keysinposx, " ");
+        keys->keysinposx = sdscat(keys->keysinposx,sdsfromlonglong(n));
+        keys->keysinposx = sdscat(keys->keysinposx," ");
+    }
+    return 0;
+}
+
+static void
+decodeRedisKeys(keystruct *keys, redisReply *reply)
+{
+    redisReply *currentkeydetails;
+    int			i;
+
+    for (i = 0; i < reply->elements; i++) {
+        currentkeydetails = reply->element[i];
+        if (checkArray(currentkeydetails, "%s entry %d", "COMMAND", i) == 0)
+            decodeRedisKey(keys, currentkeydetails);
+    }
 }
 
 sds
@@ -108,6 +208,26 @@ GetCallBack(redisAsyncContext *c, void *r, void *privdata){
     redisAsyncDisconnect(c);
 }
 
+void loadkeystruct(redisReply *reply)
+{
+
+
+    if ((keys = (keystruct *)calloc(1, sizeof(keystruct))) == NULL){
+        return;
+    }
+
+    keys->keysinposone = sdsempty();
+    keys->keysinposx = sdsempty();
+
+    if (checkArray(reply, "%s", "COMMAND") == 0) {
+        decodeRedisKeys(keys, reply);
+    }
+
+    printf("\nkeys in pos one : %s\n",keys->keysinposone);
+    printf("\n keys in pos x : %s\n",keys->keysinposx);
+
+}
+
 sds GetCommandKey(redisReply *reply){
 
     sds command;
@@ -118,11 +238,18 @@ sds GetCommandKey(redisReply *reply){
     int j;
     int i;
     int len = 0;
-
+    int keyonecount;
+    sds *keyonetokens;
+    int keyxcount;
+    int xpos;
+    sds *keyxtokens;
+    int quotecnt = 0;
     sdsbuffer = sdsempty();
     command   = sdsempty();
     defaultbuffer = sdsempty();
     tempbuf  = sdsempty();
+    sds evalstr = sdsempty();
+
 
     for (i = 0; reply != NULL && i < ((redisReply *) reply)->elements; i++) {
         tempbuf = sdscat(tempbuf, ((redisReply *) reply)->element[i]->str);
@@ -147,631 +274,75 @@ sds GetCommandKey(redisReply *reply){
 
     tokens = sdssplitlen(command,sdslen(command)," ",1,&count);
 
-    if(!strcmp(tokens[0], "get"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0],"set"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0],"rpushx"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0],"rpush"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0],"rpop"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "rpoplpush"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-        sdsbuffer = sdscat(sdsbuffer," ");
-        sdsbuffer = sdscat(sdsbuffer,tokens[2]);
-    }
-    else if(!strcmp(tokens[0], "ltrim"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lset"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lrem"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lrange"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lpushx"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lpush"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lpop"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "llen"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "linsert"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "lindex"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "brpoplpush"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-        sdsbuffer = sdscat(sdsbuffer," ");
-        sdsbuffer = sdscat(sdsbuffer,tokens[2]);
-    }
-    else if(!strcmp(tokens[0], "brpop"))
-    {
-        for(j=1;j<count-1;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "blpop"))
-    {
-        for(j=1;j<count-1;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "cluster"))
-    {
-        if(tokens[1] == "keyslot") {
-            sdsbuffer = sdscat(sdsbuffer, tokens[2]);
-        }
-    }
-    else if(!strcmp(tokens[0], "geoadd"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "geodist"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "geohash"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "geopos"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hdel"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hexists"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hget"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hgetall"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hincrby"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hincrbyfloat"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hkeys"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hlen"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hmget"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hmset"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hscan"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hset"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hsetnx"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hstrlen"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "hvals"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "pfadd"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "pfcount"))
-    {
+    keyonetokens = sdssplitlen(keys->keysinposone,sdslen(keys->keysinposone)," ",1,&keyonecount);
 
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "pfmerge"))
-    {
+    keyxtokens = sdssplitlen(keys->keysinposx,sdslen(keys->keysinposx)," ",1,&keyxcount);
 
-        for(j=1;j<count;j++)
+    for(i=0;i<keyonecount;i++)
+    {
+        if(!strcmp(tokens[0], keyonetokens[i]))
         {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
+            sdsbuffer = sdscat(sdsbuffer,tokens[1]);
+            return sdsbuffer;
         }
     }
-    else if(!strcmp(tokens[0], "del"))
+
+    for(i=0;i<keyxcount;i++)
     {
-        for(j=1;j<count;j++)
+        if(!strcmp(tokens[0], keyxtokens[i]))
         {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
+            xpos = atoi(keyxtokens[i+1]);
+            sdsbuffer = sdscat(sdsbuffer,tokens[xpos]);
+            return sdsbuffer;
         }
     }
-    else if(!strcmp(tokens[0], "dump"))
+
+    if(!strcmp(tokens[0], "eval"))
     {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "exists"))
-    {
-        for(j=1;j<count;j++)
+        for(i=0;i<count;i++) printf("\n %s\t \n",tokens[i]);
+
+        for(i=0;i<count;i++)
         {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
+            char *st = tokens[i];
+            if(st[0] == '\0')
+            {
+                quotecnt++;
+            }
+            if(quotecnt == 2)
+            {
+                if(atoi(tokens[i+1]) != 0)
+                {
+                    sdsbuffer = sdscat(sdsbuffer,tokens[i+2]);
+                    return sdsbuffer;
+                }
+            }
         }
     }
-    else if(!strcmp(tokens[0], "expire"))
+    else if(!strcmp(tokens[0], "EVALSHA"))
     {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "expireat"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "move"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "expire"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "object"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[2]);
-    }
-    else if(!strcmp(tokens[0], "persist"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "pexpire"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "pexpireat"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "pttl"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "rename"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-        sdsbuffer = sdscat(sdsbuffer," ");
-        sdsbuffer = sdscat(sdsbuffer,tokens[2]);
-    }
-    else if(!strcmp(tokens[0], "renamenx"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-        sdsbuffer = sdscat(sdsbuffer," ");
-        sdsbuffer = sdscat(sdsbuffer,tokens[2]);
-    }
-    else if(!strcmp(tokens[0], "restore"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
+        if(atoi(tokens[2]) != 0 )
+        {
+            sdsbuffer = sdscat(sdsbuffer,tokens[3]);
+        }
     }
     else if(!strcmp(tokens[0], "sort"))
     {
         sdsbuffer = sdscat(sdsbuffer,tokens[1]);
     }
-    else if(!strcmp(tokens[0], "touch"))
+    else if(!strcmp(tokens[0], "ZUNIONSTORE"))
     {
-        for(j=1;j<count;j++)
+        if(atoi(tokens[2]) != 0 )
         {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
+            sdsbuffer = sdscat(sdsbuffer,tokens[3]);
         }
     }
-    else if(!strcmp(tokens[0], "ttl"))
+    else if(!strcmp(tokens[0], "ZINTERSTORE"))
     {
-
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "type"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "unlink"))
-    {
-        for(j=1;j<count;j++)
+        if(atoi(tokens[1]) != 0 )
         {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
+            sdsbuffer = sdscat(sdsbuffer,tokens[2]);
         }
     }
-    else if(!strcmp(tokens[0], "type"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "sadd"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "scard"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "sdiff"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "sdiffstore"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "sinter"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "sinterstore"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "sismember"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "smembers"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "smove"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-        sdsbuffer = sdscat(sdsbuffer," ");
-        sdsbuffer = sdscat(sdsbuffer, tokens[2]);
-    }
-    else if(!strcmp(tokens[0], "spop"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "srandmember"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "srem"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "sscan"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "sunion"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "sscan"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "sunionstore"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "bzpopmax"))
-    {
-        for(j=1;j<count && !isdigit(tokens[j]) ;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "bzpopmin"))
-    {
-        for(j=1;j<count && !isdigit(tokens[j]) ;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "zadd"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zcard"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zcount"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zincrby"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zlexcount"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zpopmax"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zpopmin"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrange"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrangebylex"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrangebyscore"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrank"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrem"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zremrangebylex"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zremrangebyrank"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zremrangebyscore"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrevrange"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrevrangebylex"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrevrangebyscore"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrevrank"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zrevrank"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zscan"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "zscore"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "append"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "bitcount"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "bitfield"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "bitop"))
-    {
-        for(j=2;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "bitpos"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "decr"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "decrby"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "getbit"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "getrange"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "getset"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "incr"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "incrby"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "incrbyfloat"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "mget"))
-    {
-        for(j=1;j<count;j++)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "mset"))
-    {
-        for(j=1;j<count;j+=2)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "msetnx"))
-    {
-        for(j=1;j<count;j+=2)
-        {
-            sdsbuffer = sdscat(sdsbuffer,tokens[j]);
-            sdsbuffer = sdscat(sdsbuffer," ");
-        }
-    }
-    else if(!strcmp(tokens[0], "psetex"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "setbit"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "setex"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "setnx"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "setrange"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "strlen"))
-    {
-        sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else if(!strcmp(tokens[0], "command"))
-    {
-        //   sdsbuffer = sdscat(sdsbuffer,tokens[1]);
-    }
-    else
-    {
-
-        tempbuf = ProcessRedisReply(reply);
-        defaultbuffer = sdscat(defaultbuffer,"command getkeys ");
-        defaultbuffer = sdscatsds(defaultbuffer,command);
-        char *tempcommand  = malloc(sdslen(defaultbuffer)+1);
-        strcpy(tempcommand, defaultbuffer);
-        signal(SIGPIPE, SIG_IGN);
-        uv_loop_t* loop = uv_default_loop();
-
-        redisAsyncContext *c = redisAsyncConnect("127.0.0.1", 6379);
-
-        if (c->err) {
-            printf("Error: %s\n", c->errstr);
-            return 1;
-        }
-
-        redisEventAttach(c,loop);
-        redisAsyncSetConnectCallBack(c,ConnectCallBack);
-        redisAsyncSetDisconnectCallBack(c,DisconnectCallBack);
-        redisAsyncFormattedCommand(c, GetCallBack, (char*)"end-1", tempcommand, strlen(tempcommand));
-        free(tempcommand);
-        uv_run(loop, UV_RUN_DEFAULT);
-    }
-
 
     sdsfree(defaultbuffer);
     sdsfree(command);

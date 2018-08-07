@@ -54,3 +54,4 @@ src/pmproxy2/.gitignore
 src/pmproxy2/cmake-build-debug/CMakeFiles/CMakeTmp/
 .gitignore
 cmake-build-debug/CMakeFiles/CMakeTmp/
+/src/pmproxy2/CMakeLists.txt

@@ -1130,21 +1130,7 @@ redis_load_slots_callback(redisSlots *redis, redisReply *reply, void *arg , void
     else if (checkArray(reply, "%s %s", CLUSTER, "SLOTS") == 0)
 	decodeRedisSlots(redis, reply);
 
- //   redis_load_version(redis, arg);
-
-    desiredcontex = redisAsyncGet(redis,(const char*)arg,keys);
-
-    if (desiredcontex->err) {
-        printf("Error: %s\n", desiredcontex->errstr);
-        return;
-    }
-
-    redisEventAttach(desiredcontex, uv_default_loop());
-    redisAsyncSetConnectCallBack(desiredcontex, connectCallback);
-    redisAsyncSetDisconnectCallBack(desiredcontex,disconnectCallback);
-    redisAsyncFormattedCommand(desiredcontex , getCallback, (char*)"end-1",((const char*)arg),(strlen((const char*)arg)));
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-
+    trigger_pmproxy2(redis);
 }
 
 int

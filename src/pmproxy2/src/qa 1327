@@ -66,6 +66,25 @@ do
     kill $i
 done
 
+redis-cli -p 44323 set prajwal 100 &
+
+redis-cli -p 44323 get prajwal &
+
+redis-cli -p 44323 eval "return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}" 2 key1 key2 first second &
+
+redis-cli -p 44323 eval "return {1,2,{3,'Hello World!'}}" 0 &
+
+redis-cli -p 44323 SORT mylist LIMIT 0 10 &
+
+redis-cli -p 44323 SORT mylist LIMIT 0 5 ALPHA DESC &
+
+redis-cli -p 44323 ZUNIONSTORE out 2 zset1 zset2 WEIGHTS 2 3 &
+
+redis-cli -p 44323 ZINTERSTORE out 2 zset1 zset2 WEIGHTS 2 3 &
+
+redis-cli -p 44323 EVALSHA 5 A B C D E
+
+
 # if error
 exit
 

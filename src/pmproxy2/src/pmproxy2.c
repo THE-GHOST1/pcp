@@ -34,6 +34,8 @@ struct ClientRequestData {
     int64_t ClientID; //Internal implementaion
 };
 
+int updatekeystruct = 0;
+
 FILE *fp;
 
 static char* logfile = "/home/prajwal/pmproxy2.log";
@@ -81,6 +83,10 @@ getCallback(redisAsyncContext *c, void *r, void *privdata){
 
     if (reply == NULL) return;
 
+    if(updatekeystruct) {
+        loadkeystruct(reply);
+        updatekeystruct = 0;
+    }
     data = c->data;
     s = ProcessRedisReply(reply);
     printf("%s",s);
@@ -104,9 +110,12 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     sds                                 sdsbuffer;
     sds                                 keys;
     sds                                 tempbuf;
-    sds                                 hostspec;
     redisSlots                          *expectedslots;
     redisAsyncContext                   *desiredcontex;
+    sds evalstr = sdsempty();
+
+
+
     if (nread <= 0 && buf->base != NULL) {
         free(buf->base);
     }
@@ -136,7 +145,6 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     sdsbuffer = sdsempty();
     keys = sdsempty();
     tempbuf   = sdsempty();
-    hostspec = sdsnew("127.0.0.1:7001");
 
     tempbuf = ProcessRedisReply(reply);
 
@@ -146,23 +154,24 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     }
 
     printf("Input command : %s\n", sdsbuffer);
+//    if(strncmp(sdsbuffer,'eval " return " 1 key', sdslen(sdsbuffer)) == 0)
+//    {
+//        printf("\n yahoo \n");
+//    }
+    evalstr = sdscatrepr(evalstr,sdsbuffer,sdslen(sdsbuffer));
     char *command = malloc(sdslen(sdsbuffer));
     strcpy(command, sdsbuffer);
-    keys = GetCommandKey(reply);
-    printf("\nKeys for command %s is %s\n",command,keys);
+    if(!strcasecmp(sdsbuffer,"COMMAND")){
+        updatekeystruct = 1;
+    } else {
+        keys = GetCommandKey(reply);
+        printf("\nKeys for command %s is %s\n",command,keys);
+    }
     char *Clientcommand = malloc(sdslen(tempbuf));
     strcpy(Clientcommand, tempbuf);
 
-    redis_init(hostspec,Clientcommand,(void *)handle);
-//    desiredcontex = redisAsyncGet(expectedslots,command,keys);
-//
-//    if (desiredcontex->err) {
-//        printf("Error: %s\n", desiredcontex->errstr);
-//        return;
-//    }
-//
-//    r = redisAsyncFormattedCommand(data->redisAsyncContext , getCallback, (char*)"end-1",Clientcommand,strlen(Clientcommand));
-//    assert(r==0);
+    r = redisAsyncFormattedCommand(data->redisAsyncContext , getCallback, (char*)"end-1",Clientcommand,strlen(Clientcommand));
+    assert(r==0);
     fp=fopen(logfile,"a+");
     fputs(command,fp);
     fputs("\n",fp);
@@ -214,16 +223,7 @@ on_connection(uv_stream_t *server, int status) {
 
     int namelen = sizeof(name);
     ClientCounter++;
-    redisAsyncContext *c = redisAsyncConnect("127.0.0.1", 6379);
-    redisEventAttach(c, uv_default_loop());
-    redisAsyncSetConnectCallBack(c, connectCallback);
-    if (c->err) {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    redisEventAttach(c,uv_default_loop());
-    redisAsyncSetConnectCallBack(c,connectCallback);
-    redisAsyncSetDisconnectCallBack(c,disconnectCallback);
+
     assert(status == 0);
 
     stream = malloc(sizeof(uv_tcp_t));
@@ -231,6 +231,15 @@ on_connection(uv_stream_t *server, int status) {
 
     r = uv_tcp_init(uv_default_loop(), stream);
     assert(r == 0);
+
+    redisAsyncContext *c = redisAsyncConnect("127.0.0.1", 6379);
+    if (c->err) {
+        printf("Error: %s\n", c->errstr);
+        return;
+    }
+    redisEventAttach(c,uv_default_loop());
+    redisAsyncSetConnectCallBack(c,connectCallback);
+    redisAsyncSetDisconnectCallBack(c,disconnectCallback);
 
     stream->data = server;
     data->redisAsyncContext = c;
@@ -274,8 +283,19 @@ init_server() {
     return 0;
 }
 
+void
+trigger_pmproxy2(redisSlots slots) {
+    int         r;
+    r = init_server();
+    assert(r == 0);
+    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+}
+
 int
 main() {
+//    sds       hostspec;
+//    hostspec = sdsnew("127.0.0.1:7001");
+//    redis_init(hostspec, NULL, NULL);
     int         r;
     r = init_server();
     assert(r == 0);

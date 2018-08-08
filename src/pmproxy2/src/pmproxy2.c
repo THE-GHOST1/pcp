@@ -40,6 +40,8 @@ redisSlots *globalredisSlots;
 
 FILE *fp;
 
+int RUNONCEONLY = 1;
+
 static char* logfile = "/home/prajwal/pmproxy2.log";
 
 static void
@@ -296,9 +298,11 @@ void
 trigger_pmproxy2(redisSlots *slots) {
 
     globalredisSlots = slots;
-    int         r;
-    r = init_server();
-    assert(r == 0);
+    if(RUNONCEONLY){
+        int         r;
+        r = init_server();
+        RUNONCEONLY = 0;
+    }
     uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }
 

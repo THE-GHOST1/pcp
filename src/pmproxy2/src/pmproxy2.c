@@ -36,6 +36,8 @@ struct ClientRequestData {
 
 int updatekeystruct = 0;
 
+redisSlots *globalredisSlots;
+
 FILE *fp;
 
 static char* logfile = "/home/prajwal/pmproxy2.log";
@@ -44,6 +46,40 @@ static void
 on_close_cb(uv_handle_t *handle) {
     free(handle);
 }
+
+
+static void
+alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+    buf->base = malloc(suggested_size); //what size? break the msg (64 bit)
+    assert(buf->base != NULL);
+    buf->len = suggested_size;
+}
+
+static void
+connectCallback(const redisAsyncContext *c, int status) {
+    if (status != REDIS_OK) {
+        printf("Error: %s\n", c->errstr);
+        return;
+    }
+    //  printf("Connected...\n");
+}
+
+static void
+disconnectCallback(const redisAsyncContext *c, int status) {
+    struct ClientRequestData            *data;
+
+    if (status != REDIS_OK)
+    {
+        printf("Error: %s\n", c->errstr);
+        return;
+    }
+
+    data=c->data;
+    printf("Client %d disconnecting",data->ClientID);
+    printf("\nDisconnected...\n");
+}
+
+
 
 static void
 after_write(uv_write_t *req, int status) {
@@ -87,7 +123,8 @@ getCallback(redisAsyncContext *c, void *r, void *privdata){
         loadkeystruct(reply);
         updatekeystruct = 0;
     }
-    data = c->data;
+    data = (struct ClientRequestData *)privdata;
+    printf("\n %d \n",data->ClientID);
     s = ProcessRedisReply(reply);
     printf("%s",s);
     wr->buf = uv_buf_init(s, sdslen(s));
@@ -104,7 +141,6 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     int                                 ret;
     int                                 i;
     int                                 r;
-    redisAsyncContext                   *c;
     write_req_t                         *wr;
     uv_shutdown_t                       *req;
     sds                                 sdsbuffer;
@@ -135,9 +171,10 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     wr = (write_req_t *) malloc(sizeof(*wr));
     assert(wr != NULL);
 
-    data = handle->data;
     reader = redisReaderCreate();
+
     redisReaderFeed(reader, (char *) (buf->base), strlen(buf->base));
+
     ret = redisReaderGetReply(reader, &reply);
 
     assert(ret == REDIS_OK);
@@ -154,11 +191,6 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     }
 
     printf("Input command : %s\n", sdsbuffer);
-//    if(strncmp(sdsbuffer,'eval " return " 1 key', sdslen(sdsbuffer)) == 0)
-//    {
-//        printf("\n yahoo \n");
-//    }
-    evalstr = sdscatrepr(evalstr,sdsbuffer,sdslen(sdsbuffer));
     char *command = malloc(sdslen(sdsbuffer));
     strcpy(command, sdsbuffer);
     if(!strcasecmp(sdsbuffer,"COMMAND")){
@@ -170,7 +202,26 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     char *Clientcommand = malloc(sdslen(tempbuf));
     strcpy(Clientcommand, tempbuf);
 
-    r = redisAsyncFormattedCommand(data->redisAsyncContext , getCallback, (char*)"end-1",Clientcommand,strlen(Clientcommand));
+    desiredcontex = redisAsyncGet(globalredisSlots, NULL, keys);
+
+    if (desiredcontex->err) {
+        printf("Error: %s\n", desiredcontex->errstr);
+        return;
+    }
+    redisEventAttach(desiredcontex,uv_default_loop());
+    redisAsyncSetConnectCallBack(desiredcontex,connectCallback);
+    redisAsyncSetDisconnectCallBack(desiredcontex,disconnectCallback);
+
+
+    data = handle->data;
+
+    printf("\nClient ID :  %d \n",data->ClientID);
+
+    data->redisAsyncContext = desiredcontex;
+
+    desiredcontex->data = data;
+
+    r = redisAsyncFormattedCommand(desiredcontex, getCallback, (void *)data,Clientcommand,strlen(Clientcommand));
     assert(r==0);
     fp=fopen(logfile,"a+");
     fputs(command,fp);
@@ -179,37 +230,6 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     sdsfree(sdsbuffer);
     sdsfree(keys);
     freeReplyObject(reply);
-}
-
-static void
-alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-    buf->base = malloc(suggested_size); //what size? break the msg (64 bit)
-    assert(buf->base != NULL);
-    buf->len = suggested_size;
-}
-
-static void
-connectCallback(const redisAsyncContext *c, int status) {
-    if (status != REDIS_OK) {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    //  printf("Connected...\n");
-}
-
-static void
-disconnectCallback(const redisAsyncContext *c, int status) {
-    struct ClientRequestData            *data;
-
-    if (status != REDIS_OK)
-    {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-
-    data=c->data;
-    printf("Client %d disconnecting",data->ClientID);
-    printf("\nDisconnected...\n");
 }
 
 static void
@@ -232,20 +252,9 @@ on_connection(uv_stream_t *server, int status) {
     r = uv_tcp_init(uv_default_loop(), stream);
     assert(r == 0);
 
-    redisAsyncContext *c = redisAsyncConnect("127.0.0.1", 6379);
-    if (c->err) {
-        printf("Error: %s\n", c->errstr);
-        return;
-    }
-    redisEventAttach(c,uv_default_loop());
-    redisAsyncSetConnectCallBack(c,connectCallback);
-    redisAsyncSetDisconnectCallBack(c,disconnectCallback);
-
     stream->data = server;
-    data->redisAsyncContext = c;
-    c->data = data;
-    stream->data = data;
     data->client = stream;
+    stream->data = data;
 
     r = uv_accept(server, (uv_stream_t *) stream);
     assert(r == 0);
@@ -284,7 +293,9 @@ init_server() {
 }
 
 void
-trigger_pmproxy2(redisSlots slots) {
+trigger_pmproxy2(redisSlots *slots) {
+
+    globalredisSlots = slots;
     int         r;
     r = init_server();
     assert(r == 0);
@@ -293,12 +304,12 @@ trigger_pmproxy2(redisSlots slots) {
 
 int
 main() {
-//    sds       hostspec;
-//    hostspec = sdsnew("127.0.0.1:7001");
-//    redis_init(hostspec, NULL, NULL);
-    int         r;
-    r = init_server();
-    assert(r == 0);
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-    return 0;
+    sds       hostspec;
+    hostspec = sdsnew("127.0.0.1:7001");
+    redis_init(hostspec, NULL, NULL);
+//    int         r;
+//    r = init_server();
+//    assert(r == 0);
+//    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+//    return 0;
 }

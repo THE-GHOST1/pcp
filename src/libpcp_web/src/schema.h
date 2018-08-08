@@ -19,6 +19,7 @@
 #include "private.h"
 #include "slots.h"
 #include "uv.h"
+#include "../../pmproxy2/src/pmproxy2.h"
 
 #define EVALSHA		"EVALSHA"
 #define EVALSHA_LEN	(sizeof(EVALSHA)-1)

@@ -101,10 +101,12 @@ after_shutdown(uv_shutdown_t *req, int status) {
     struct ClientRequestData        *data;
 
     data = req->handle->data;
-    redisAsyncDisconnect(data->redisAsyncContext);
+    //redisAsyncDisconnect(data->redisAsyncContext);
     if (status < 0) {
         fprintf(stderr, "%s\n", uv_strerror(status));
     }
+    printf("Client %d disconnecting",data->ClientID);
+    printf("\nDisconnected...\n");
     uv_close((uv_handle_t *) req->handle, on_close_cb);
     free(req);
 }
@@ -311,9 +313,4 @@ main() {
     sds       hostspec;
     hostspec = sdsnew("127.0.0.1:7001");
     redis_init(hostspec, NULL, NULL);
-//    int         r;
-//    r = init_server();
-//    assert(r == 0);
-//    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-//    return 0;
 }

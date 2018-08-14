@@ -1,5 +1,5 @@
 Name:    pcp
-Version: 4.1.1
+Version: 4.1.2
 Release: 1%{?dist}
 Summary: System-level performance monitoring and performance management
 License: GPLv2+ and LGPLv2.1+ and CC-BY
@@ -175,12 +175,17 @@ Source4: %{github}/pcp-webapp-blinkenlights/archive/1.0.0/pcp-webapp-blinkenligh
 # prevent conflicting binary and man page install for pcp(1)
 Conflicts: librapi
 
+# KVM PMDA moved into pcp (no longer using Perl, default on)
+Obsoletes: pcp-pmda-kvm
+Provides: pcp-pmda-kvm
+
 # https://fedoraproject.org/wiki/Packaging:C_and_C%2B%2B
 BuildRequires: gcc gcc-c++
 BuildRequires: procps autoconf bison flex
 BuildRequires: nss-devel
 BuildRequires: rpm-devel
 BuildRequires: avahi-devel
+BuildRequires: xz-devel
 BuildRequires: zlib-devel
 %if !%{disable_python2}
 %if 0%{?default_python} != 3
@@ -219,7 +224,7 @@ BuildRequires: perl-generators
 BuildRequires: perl-devel perl(strict)
 BuildRequires: perl(ExtUtils::MakeMaker) perl(LWP::UserAgent) perl(JSON)
 BuildRequires: perl(LWP::UserAgent) perl(Time::HiRes) perl(Digest::MD5)
-BuildRequires: initscripts man
+BuildRequires: man
 %if !%{disable_systemd}
 BuildRequires: systemd-devel
 %endif
@@ -233,15 +238,17 @@ BuildRequires: qt5-qtsvg-devel
 %endif
 %endif
 
-Requires: bash gawk sed grep findutils initscripts which
+Requires: bash gawk sed grep findutils which
 Requires: pcp-libs = %{version}-%{release}
 %if !%{disable_selinux}
 Requires: pcp-selinux = %{version}-%{release}
 %endif
-%if 0%{?fedora} < 27
-# F27 re-introduced split-out debuginfo packages
+
+# Some older releases did not update or replace pcp-gui-debuginfo properly
+%if 0%{?fedora} < 27 && 0%{?rhel} <= 7 && "%{_vendor}" == "redhat"
 Obsoletes: pcp-gui-debuginfo
 %endif
+
 Obsoletes: pcp-pmda-nvidia
 
 # Obsoletes for distros that already have single install pmda's with compat package
@@ -265,6 +272,13 @@ Requires: pcp-libs = %{version}-%{release}
 
 %if 0%{?fedora} >= 20 || 0%{?rhel} >= 8
 %global _with_doc --with-docdir=%{_docdir}/%{name}
+%endif
+
+%if 0%{?fedora} >= 29 || 0%{?rhel} >= 8
+%global _with_dstat --with-dstat-symlink=yes
+%global disable_dstat 0
+%else
+%global disable_dstat 1
 %endif
 
 %if !%{disable_systemd}
@@ -803,6 +817,26 @@ Performance Co-Pilot (PCP) front-end tools for exporting metric values
 in JSON format.
 
 #
+# pcp-export-pcp2spark
+#
+%package export-pcp2spark
+License: GPLv2+
+Group: Applications/System
+Summary: Performance Co-Pilot tools for exporting PCP metrics to Apache Spark
+URL: https://pcp.io
+Requires: pcp-libs >= %{version}-%{release}
+%if !%{disable_python3}
+Requires: python3-pcp = %{version}-%{release}
+%else
+Requires: %{__python2}-pcp = %{version}-%{release}
+%endif
+
+%description export-pcp2spark
+Performance Co-Pilot (PCP) front-end tools for exporting metric values
+in JSON format to Apache Spark. See https://spark.apache.org/ for
+further details on Apache Spark.
+
+#
 # pcp-export-pcp2xlsx
 #
 %if !%{disable_xlsx}
@@ -1095,21 +1129,6 @@ Requires: perl-PCP-PMDA = %{version}-%{release}
 This package contains the PCP Performance Metrics Domain Agent (PMDA) for
 collecting metrics about a GPS Daemon.
 #end pcp-pmda-gpsd
-
-#
-# pcp-pmda-kvm
-#
-%package pmda-kvm
-License: GPLv2+
-Group: Applications/System
-Summary: Performance Co-Pilot (PCP) metrics for KVM
-URL: https://pcp.io
-Requires: perl-PCP-PMDA = %{version}-%{release}
-
-%description pmda-kvm
-This package contains the PCP Performance Metrics Domain Agent (PMDA) for
-collecting metrics about the Kernel based Virtual Machine.
-#end pcp-pmda-kvm
 
 #
 # pcp-pmda-docker
@@ -1953,7 +1972,7 @@ Group: Applications/System
 Summary: Performance Co-Pilot (PCP) Collection meta Package
 URL: https://pcp.io
 Requires: pcp-pmda-activemq pcp-pmda-bonding pcp-pmda-dbping pcp-pmda-ds389 pcp-pmda-ds389log
-Requires: pcp-pmda-elasticsearch pcp-pmda-gpfs pcp-pmda-gpsd pcp-pmda-kvm pcp-pmda-lustre
+Requires: pcp-pmda-elasticsearch pcp-pmda-gpfs pcp-pmda-gpsd pcp-pmda-lustre
 Requires: pcp-pmda-memcache pcp-pmda-mysql pcp-pmda-named pcp-pmda-netfilter pcp-pmda-news
 Requires: pcp-pmda-nginx pcp-pmda-nfsclient pcp-pmda-pdns pcp-pmda-postfix pcp-pmda-postgresql pcp-pmda-oracle
 Requires: pcp-pmda-samba pcp-pmda-slurm pcp-pmda-vmware pcp-pmda-zimbra
@@ -2083,6 +2102,10 @@ Requires: python3-pcp = %{version}-%{release}
 Requires: %{__python2}-pcp = %{version}-%{release}
 %endif
 Requires: pcp-libs = %{version}-%{release}
+%if !%{disable_dstat}
+Obsoletes: dstat
+Provides: /usr/bin/dstat
+%endif
 
 %description system-tools
 This PCP module contains additional system monitoring tools written
@@ -2171,7 +2194,7 @@ updated policy package.
 %if !%{disable_python2} && 0%{?default_python} != 3
 export PYTHON=python%{?default_python}
 %endif
-%configure %{?_with_initd} %{?_with_doc} %{?_with_ib} %{?_with_papi} %{?_with_perfevent} %{?_with_bcc} %{?_with_json} %{?_with_snmp} %{?_with_nutcracker} %{?_with_webapps}
+%configure %{?_with_initd} %{?_with_doc} %{?_with_dstat} %{?_with_ib} %{?_with_papi} %{?_with_perfevent} %{?_with_bcc} %{?_with_json} %{?_with_snmp} %{?_with_nutcracker} %{?_with_webapps}
 make %{?_smp_mflags} default_pcp
 
 %install
@@ -2259,7 +2282,6 @@ ls -1 $RPM_BUILD_ROOT/%{_pmdasdir} |\
   grep -E -v '^elasticsearch' |\
   grep -E -v '^gpfs' |\
   grep -E -v '^gpsd' |\
-  grep -E -v '^kvm' |\
   grep -E -v '^lio' |\
   grep -E -v '^lustre' |\
   grep -E -v '^lustrecomm' |\
@@ -2317,6 +2339,7 @@ ls -1 $RPM_BUILD_ROOT/%{_bindir} |\
   grep -E -v 'pmiostat|pmcollectl|zabbix|zbxpcp|dstat' |\
   grep -E -v 'pmrep|pcp2graphite|pcp2influxdb|pcp2zabbix' |\
   grep -E -v 'pcp2elasticsearch|pcp2json|pcp2xlsx|pcp2xml' |\
+  grep -E -v 'pcp2spark' |\
   grep -E -v 'pmdbg|pmclient|pmerr|genpmda' |\
 sed -e 's#^#'%{_bindir}'\/#' >base_bin.list
 
@@ -2553,9 +2576,6 @@ fi
 
 %preun pmda-gpsd
 %{pmda_remove "$1" "gpsd"}
-
-%preun pmda-kvm
-%{pmda_remove "$1" "kvm"}
 
 %preun pmda-lio
 %{pmda_remove "$1" "lio"}
@@ -3108,9 +3128,6 @@ cd
 %files pmda-gpsd
 %{_pmdasdir}/gpsd
 
-%files pmda-kvm
-%{_pmdasdir}/kvm
-
 %files pmda-docker
 %{_pmdasdir}/docker
 
@@ -3227,6 +3244,9 @@ cd
 
 %files export-pcp2json
 %{_bindir}/pcp2json
+
+%files export-pcp2spark
+%{_bindir}/pcp2spark
 
 %if !%{disable_xlsx}
 %files export-pcp2xlsx
@@ -3352,8 +3372,19 @@ cd
 %endif
 
 %changelog
+* Fri Aug 03 2018 Dave Brolley <brolley@redhat.com> - 4.1.1-2
+- pcp.spec: Fix the _with_dstat reference in the %configure command
+
 * Fri Aug 03 2018 Dave Brolley <brolley@redhat.com> - 4.1.1-1
-- Work-in-progress, see https://pcp.io/roadmap
+- SELinux is preventing pmdalinux from 'unix_read' accesses on the shared memory Unknown
+  (BZ 1592901)
+- SELinux is preventing pmdalinux from getattr, associate access on the shared memory Unknown
+  (BZ 1594991)
+- PCP BCC PMDA AVCs (BZ 1597978)
+- PCP BCC PMDA packaging issue (BZ 1597979)
+- pmdaproc only reads the first 1024 bytes of the /proc/*/status file resulting in lost metric
+  values(BZ 1600262)
+- Update to latest PCP sources.
 
 * Fri Jun 15 2018 Nathan Scott <nathans@redhat.com> - 4.1.0-1
 - Rapid compression of PCP log data and metadata (BZ 1293471)

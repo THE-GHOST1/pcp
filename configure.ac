@@ -23,57 +23,49 @@ AC_PREREQ([2.63])dnl
 dnl Irix build issue ... use the tools from the local filesystems
 unset ROOT TOOLROOT
 
-AC_ARG_WITH(
-    [64bit],
+AC_ARG_WITH([64bit],
     [AS_HELP_STRING([--with-64bit],
 		    [turn on 64 bit compilation mode (default is platform dependent)])],
     [use_64bit=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-64bit=$withval"])
 
-AC_ARG_WITH(
-    [optimization],
+AC_ARG_WITH([optimization],
     [AS_HELP_STRING([--with-optimization],
 		    [enable optimization for C/C++ code (default is yes)])],
     [use_optimization=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-optimization=$withval"],
     [use_optimizaton=yes])
 
-AC_ARG_WITH(
-    [threads],
+AC_ARG_WITH([threads],
     [AC_HELP_STRING([--with-threads],
 		    [enable support for multiple threads (default is on)])],
     [do_threads=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-threads=$withval"],
     [do_threads=check])
 
-AC_ARG_WITH(
-    [secure-sockets],
+AC_ARG_WITH([secure-sockets],
     [AC_HELP_STRING([--with-secure-sockets],
 		    [enable support for secure sockets (default is on)])],
     [do_secure=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-secure-sockets=$withval"],
     [do_secure=check])
 
-AC_ARG_WITH(
-    [static-probes],
+AC_ARG_WITH([static-probes],
     [AC_HELP_STRING([--with-static-probes],
 		    [enable support for static probes (default is on)])],
     [do_probes=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-static-probes=$withval"],
     [do_probes=check])
 
-AC_ARG_WITH(
-    [infiniband],
+AC_ARG_WITH([infiniband],
     [AC_HELP_STRING([--with-infiniband],
 		    [enable support for Infiniband metrics (default is on)])],
     [do_infiniband=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-infiniband=$withval"],
     [do_infiniband=check])
 
-AC_ARG_WITH(
-    [user],
+AC_ARG_WITH([user],
     [AS_HELP_STRING([--with-user],
 		    [user account under which daemons run (default is pcp)])],
     [pcp_user=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-user-account=$withval"],
     [pcp_user=pcp])
 AC_SUBST(pcp_user)
 
-AC_ARG_WITH(
-    [group],
+AC_ARG_WITH([group],
     [AS_HELP_STRING([--with-group],
 		    [user group under which daemons run (default is pcp)])],
     [pcp_group=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-group-account=$withval"],
@@ -104,6 +96,12 @@ AC_ARG_WITH([qt3d],
     [do_qt3d=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-qt3d=$withval"],
     [do_qt3d=check])
 
+AC_ARG_WITH([perl],
+    [AC_HELP_STRING([--with-perl],
+                    [enable support for tools requiring Perl (default is on)])],
+    [do_perl=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-perl=$withval"],
+    [do_perl=check])
+
 AC_ARG_WITH([python],
     [AC_HELP_STRING([--with-python],
                     [enable support for tools requiring Python (default is on)])],
@@ -115,6 +113,12 @@ AC_ARG_WITH([python3],
                     [enable support for tools requiring Python3 (default is on)])],
     [do_python3=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-python3=$withval"],
     [do_python3=check])
+
+AC_ARG_WITH([dstat-symlink],
+    [AC_HELP_STRING([--with-dstat-symlink],
+		    [enable support for /usr/bin/dstat symlink (default is off)])],
+    [do_dstat_symlink=$withval; PACKAGE_CONFIGURE="$PACKAGE_CONFIGURE --with-dstat-symlink=$withval"],
+    [do_dstat_symlink=no])
 
 AC_ARG_WITH([books],
     [AC_HELP_STRING([--with-books],
@@ -803,9 +807,8 @@ AS_IF([test "x$do_python" != "xno"], [
 		enable_python2=false
 	    else
 		AC_CHECK_HEADERS([python${PY_MAJOR}.${PY_MINOR}/Python.h], [], [
-		    echo WARNING: Python version $PY_MAJOR.$PY_MINOR header file missing.
-		    echo Cannot proceed with the Python $PY_MAJOR installation found.
-		    enable_python2=false
+		    echo WARNING: Python version $PY_MAJOR.$PY_MINOR header file may be missing.
+		    echo Proceeding with the Python $PY_MAJOR installation found, regardless.
 		])
 	    fi
 	fi
@@ -839,9 +842,8 @@ AS_IF([test "x$do_python3" != "xno"], [
 		enable_python3=false
 	    else
 		AC_CHECK_HEADERS([python${PY_MAJOR}.${PY_MINOR}m/Python.h], [], [
-		    echo WARNING: Python version $PY_MAJOR.$PY_MINOR header file missing.
-		    echo Cannot proceed with the Python $PY_MAJOR installation found.
-		    enable_python3=false
+		    echo WARNING: Python version $PY_MAJOR.$PY_MINOR header file may be missing.
+		    echo Proceeding with the Python $PY_MAJOR installation found, regardless.
 		])
 	    fi
 	fi
@@ -879,6 +881,20 @@ else
     pcp_python_prog=""
 fi
 AC_SUBST(pcp_python_prog)
+
+dnl Enable for support for the /usr/bin/dstat compatibility symlink
+AC_MSG_CHECKING(for dstat symlink)
+enable_dstat=false
+if test "$do_dstat_symlink" = "check" -o "$do_dstat_symlink" = "yes"
+then
+    enable_dstat=true
+    if test "$have_python" = "false"
+    then
+	AC_MSG_ERROR([cannot enable dstat symlink - no python found])
+    fi
+fi
+AC_SUBST(enable_dstat)
+if $enable_dstat; then AC_MSG_RESULT(yes); else AC_MSG_RESULT(no); fi
 
 dnl check availability of some Python modules
 dnl usage PCP_CHECK_PYTHON_MODULE(module_name) or
@@ -925,6 +941,15 @@ AC_SUBST(have_python_libvirt)
 PCP_CHECK_PYTHON_MODULE(six)
 AC_SUBST(have_python_six)
 
+AC_MSG_CHECKING([if the python InfluxDB support should be included])
+have_python_influxdb=false
+if test "$have_python" = true
+then
+    $have_python_requests && $have_python_OrderedDict && have_python_influxdb=true
+fi
+AC_SUBST(have_python_influxdb)
+if $have_python_influxdb; then AC_MSG_RESULT(yes); else AC_MSG_RESULT(no); fi
+
 AC_MSG_CHECKING([if the json PMDA should be included])
 pmda_json=false
 AS_IF([test "x$do_pmdajson" = "xyes"], [pmda_json=true])
@@ -951,21 +976,26 @@ dnl check if perl available for the build and runtime
 AC_CHECK_PROGS(PERL, perl)
 AC_SUBST(PERL)
 
-AC_MSG_CHECKING([for any perl version])
-if test "$cross_compiling" = "yes"; then
-    ans=$have_perl
-    echo "cross-compile -> \"$ans\"" >&5
-elif test -n "$PERL"
-then
-    pcp_perl_prog=$PERL
-    have_perl=true
-else
-    pcp_perl_prog=""
-    have_perl=false
-fi
+enable_perl=false
+AS_IF([test "x$do_perl" != "xno"], [
+    enable_perl=true
+    AC_MSG_CHECKING([for any perl version])
+    if test "$cross_compiling" = "yes"; then
+        ans=$have_perl
+        echo "cross-compile -> \"$ans\"" >&5
+    elif test -n "$PERL"
+    then
+        pcp_perl_prog=$PERL
+        have_perl=true
+    else
+        pcp_perl_prog=""
+        have_perl=false
+    fi
+    AC_MSG_RESULT($pcp_perl_prog)
+], [have_perl=false])
 AC_SUBST(pcp_perl_prog)
+AC_SUBST(enable_perl)
 AC_SUBST(have_perl)
-AC_MSG_RESULT($pcp_perl_prog)
 
 AC_MSG_CHECKING([if the SNMP PMDA should be included])
 pmda_snmp=false
@@ -1599,6 +1629,7 @@ AC_CHECK_HEADERS(netioapi.h, [], [], [#include <winsock2.h>])
 AC_CHECK_HEADERS(fts.h libzfs.h)
 AC_CHECK_HEADERS(sys/statvfs.h sys/statfs.h sys/mount.h)
 AC_CHECK_HEADERS(ncurses/curses.h)
+AC_CHECK_HEADERS(linux/perf_event.h)
 
 dnl Check if we have <sys/endian.h> ... standard way
 AC_MSG_CHECKING([for sys/endian.h ])

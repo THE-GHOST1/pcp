@@ -18,12 +18,14 @@ badmmv
 badpmcdpmid
 badpmda
 batch_import.pl
+bcc_profile
 chain
 check_fault_injection
 check_import
 check_import_name
 check_import.pl
 check_pmiend_fdleak
+checkstructs
 chkacc1
 chkacc2
 chkacc3
@@ -123,6 +125,8 @@ mmv2_genstats
 mmv2_instances
 mmv2_nostats
 mmv2_simple
+mmv3_labels
+mmv3_simple
 multictx
 multifetch
 multithread0

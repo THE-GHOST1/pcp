@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2018 Red Hat.
+ * Copyright (c) 2018 Challa Venkata Naga Prajwal <cvnprajwal at gmail dot com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -12,6 +13,7 @@
  * for more details.
  */
 #include "schema.h"
+#include "libuv.h"
 #include "slots.h"
 #include "crc16.h"
 #include <search.h>
@@ -19,27 +21,30 @@
 #include <strings.h>
 #endif
 
+#define slotsfmt(msg, fmt, ...)		\
+	((msg) = sdscatprintf(sdsempty(), fmt, ##__VA_ARGS__))
+#define slotsinfo(slots, level, msg)	\
+	((slots)->info((level), (msg), (slots)->userdata), sdsfree(msg))
+
 static char default_server[] = "localhost:6379";
-static struct timeval default_timeout = { 1, 500000 }; /* 1.5 secs */
 
 
 
 
 redisSlots *
-redisSlotsInit(sds hostspec, struct timeval *timeout)
+redisSlotsInit(sds hostspec, redisInfoCallBack info, void *events, void *userdata)
 {
-    redisSlots		*pool;
+    redisSlots		*slots;
 
-    if ((pool = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
+    if ((slots = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
 	return NULL;
 
-    pool->hostspec = sdsdup(hostspec);
-    if (timeout == NULL)
-	timeout = &default_timeout;
-    else
-	pool->timeout = *timeout;
-    pool->control = redis_connect(hostspec, timeout);
-    return pool;
+    slots->hostspec = sdsdup(hostspec);
+    slots->info = info;
+    slots->events = events;
+    slots->userdata = userdata;
+    slots->control = redisSlotsConnect(slots, hostspec);
+    return slots;
 }
 
 redisSlots *
@@ -97,7 +102,7 @@ static void
 redisSlotServerFree(redisSlots *pool, redisSlotServer *server)
 {
     if (server->redis != pool->control)
-	redisFree(server->redis);
+	redisAsyncDisconnect(server->redis);
     if (server->hostspec != pool->hostspec)
 	sdsfree(server->hostspec);
     memset(server, 0, sizeof(*server));
@@ -126,7 +131,7 @@ redisFreeSlots(redisSlots *pool)
 	tdelete(range, &root, slotsCompare);
 	redisSlotRangeFree(pool, range);
     }
-    redisFree(pool->control);
+    redisAsyncDisconnect(pool->control);
     sdsfree(pool->hostspec);
     free(pool->control);
     memset(pool, 0, sizeof(*pool));
@@ -161,116 +166,62 @@ keySlot(const char *key, unsigned int keylen)
     return crc16(key + start + 1, end - start - 1) & SLOTMASK;
 }
 
-redisContext *
-redisGet(redisSlots *redis, const char *command, sds key)
+static void
+redis_connect_callback(const redisAsyncContext *redis, int status)
 {
-    redisSlotServer	*server;
-    redisSlotRange	*range, s;
-    unsigned int	slot;
-    void		*p;
+    redisSlots		*slots = (redisSlots *)redis->data;
+    sds			msg;
 
-    if (key == NULL)
-	return redis->control;
-
-    slot = keySlot(key, sdslen(key));
-    if (UNLIKELY(pmDebugOptions.series))
-	fprintf(stderr, "redisGet[slot=%u] %s %s\n", slot, command, key);
-    s.start = s.end = slot;
-
-    p = tfind((const void *)&s, (void **)&redis->slots, slotsCompare);
-    if ((range = *(redisSlotRange **)p) == NULL)
-	return NULL;
-
-    range->counter++;
-    server = (range->nslaves == 0 || redis->readonly == 0) ? &range->master
-	   : &range->slaves[range->counter % range->nslaves];
-    if (server->redis == NULL)
-	server->redis = redis_connect(server->hostspec, &redis->timeout);
-    return server->redis;
-}
-
-redisAsyncContext *
-redisAsyncGet(redisSlots *redis, const char *command, sds key)
-{
-    redisSlotServer	*server;
-    redisSlotRange	*range, s;
-    unsigned int	slot;
-    void		*p;
-
-    if (key == NULL)
-        return redis->Asynccontrol;
-
-    slot = keySlot(key, sdslen(key));
-    s.start = s.end = slot;
-    p = tfind((const void *)&s, (void **)&redis->slots, slotsCompare);
-    if ((range = *(redisSlotRange **)p) == NULL)
-        return NULL;
-
-    range->counter++;
-    server = (range->nslaves == 0 || redis->readonly == 0) ? &range->master : &range->slaves[range->counter % range->nslaves];
-    if (server->redis == NULL)
-        server->redis = redis_async_connect(server->hostspec);
-    return server->redis;
-}
-
-redisAsyncContext *
-redis_async_connect(sds input)
-{
-    redisAsyncContext *Asyncredis;
-
-    char *server = malloc(sdslen(input));
-    strcpy(server, input);
-
-    if (server == NULL)
-        server = default_server;
-
-    if (strncmp(server, "unix:", 5) == 0) {
-        Asyncredis = redisAsyncConnectUnix(server + 5);
+    if (status == REDIS_OK) {
+	slotsfmt(msg, "Connected to redis on %s:%d",
+			redis->c.tcp.host, redis->c.tcp.port);
+	slotsinfo(slots, PMLOG_INFO, msg);
+	redisAsyncEnableKeepAlive((redisAsyncContext *)redis);
     } else {
-        unsigned int	port;
-        char		*endnum, *p;
-        char		hostname[MAXHOSTNAMELEN];
-
-        pmsprintf(hostname, sizeof(hostname), "%s", server);
-        if ((p = rindex(hostname, ':')) == NULL) {
-            port = 6379;  /* default redis port */
-        } else {
-            port = (unsigned int)strtoul(p + 1, &endnum, 10);
-            if (*endnum != '\0')
-                port = 6379;
-            else
-                *p = '\0';
-        }
-        /* redis = redisConnectWithTimeout(server, port, *timeout); */
-        Asyncredis = redisAsyncConnect(hostname, port);
+	if (redis->c.connection_type == REDIS_CONN_UNIX)
+	    slotsfmt(msg, "Connecting to %s failed - %s",
+			redis->c.unix_sock.path, redis->errstr);
+	else
+	    slotsfmt(msg, "Connecting to %s:%d failed - %s",
+			redis->c.tcp.host, redis->c.tcp.port, redis->errstr);
+	slotsinfo(slots, PMLOG_ERROR, msg);
     }
-    if (Asyncredis->err) {
-        printf("Error: %s\n", Asyncredis->errstr);
-        return;
-    }
-    return Asyncredis;
 }
 
-redisContext *
-redis_connect(char *server, struct timeval *timeout)
+static void
+redis_disconnect_callback(const redisAsyncContext *redis, int status)
 {
-    redisContext	*redis;
+    redisSlots		*slots;
+    sds			msg;
+
+    slots = (redisSlots *)redis->data;
+    if (status == REDIS_OK) {
+	fprintf(stderr, "Disconnected from redis on %s:%d\n",
+			redis->c.tcp.host, redis->c.tcp.port);
+    } else {
+	if (redis->c.connection_type == REDIS_CONN_UNIX)
+	    slotsfmt(msg, "Disconnecting from %s failed - %s",
+			redis->c.unix_sock.path, redis->errstr);
+	else
+	    slotsfmt(msg, "Disconnecting from %s:%d failed - %s",
+			redis->c.tcp.host, redis->c.tcp.port, redis->errstr);
+	slotsinfo(slots, PMLOG_ERROR, msg);
+    }
+}
+
+static redisAsyncContext *
+redis_connect(const char *server)
+{
+    char		hostname[MAXHOSTNAMELEN];
+    char		*endnum, *p;
+    unsigned int	port;
 
     if (server == NULL)
 	server = default_server;
-    if (timeout == NULL)
-	timeout = &default_timeout;
-
-    if (strncmp(server, "unix:", 5) == 0) {
-	redis = redisConnectUnixWithTimeout(server + 5, *timeout);
-    } else {
-	unsigned int	port;
-	char		*endnum, *p;
-	char		hostname[MAXHOSTNAMELEN];
-
+    if (strncmp(server, "unix:", 5) != 0) {
 	pmsprintf(hostname, sizeof(hostname), "%s", server);
 	if ((p = rindex(hostname, ':')) == NULL) {
-	    port = 6379;  /* default redis port */
+	    port = 6379;  /* default Redis port */
 	} else {
 	    port = (unsigned int)strtoul(p + 1, &endnum, 10);
 	    if (*endnum != '\0')
@@ -278,22 +229,68 @@ redis_connect(char *server, struct timeval *timeout)
 	    else
 		*p = '\0';
 	}
-	/* redis = redisConnectWithTimeout(server, port, *timeout); */
-	redis = redisConnect(hostname, port);
+	return redisAsyncConnect(hostname, port);
     }
+    return redisAsyncConnectUnix(server + 5);
+}
 
-    /* TODO: messages need to be passed back via an info callback */
-    if (!redis || redis->err) {
-	if (redis) {
-	    fprintf(stderr, "Redis connection error: %s\n", redis->errstr);
-	    redisFree(redis);
-	} else {
-	    fprintf(stderr, "Redis connection error: can't allocate context\n");
-	}
-	return NULL;
+redisAsyncContext *
+redisSlotsConnect(redisSlots *slots, const char *server)
+{
+    redisAsyncContext	*redis = redis_connect(server);
+
+    if (redis) {
+	redis->data = (void *)slots;
+	redisEventAttach(redis, slots->events);
+	redisAsyncSetConnectCallBack(redis, redis_connect_callback);
+	redisAsyncSetDisconnectCallBack(redis, redis_disconnect_callback);
     }
-
-    /* redisSetTimeout(redis, *timeout); */
-    redisEnableKeepAlive(redis);
     return redis;
+}
+
+redisAsyncContext *
+redisGet(redisSlots *slots, const char *command, sds key)
+{
+    redisSlotServer	*server;
+    redisSlotRange	*range, s;
+    unsigned int	slot;
+    void		*p;
+
+    if (key == NULL)
+	return slots->control;
+
+    slot = keySlot(key, sdslen(key));
+    if (UNLIKELY(pmDebugOptions.series))
+	fprintf(stderr, "redisGet[slot=%u] %s %s\n", slot, command, key);
+    s.start = s.end = slot;
+
+    p = tfind((const void *)&s, (void **)&slots->slots, slotsCompare);
+    if ((range = *(redisSlotRange **)p) == NULL)
+	return NULL;
+
+    range->counter++;
+    server = (range->nslaves == 0) ? &range->master :
+	     &range->slaves[range->counter % range->nslaves];
+    if (server->redis == NULL)
+	server->redis = redisSlotsConnect(slots, server->hostspec);
+    return server->redis;
+}
+
+int
+redisSlotsRequest(redisSlots *slots, const char *command, sds key, sds cmd,
+	redisAsyncCallBack *callback, void *arg)
+{
+    redisAsyncContext	*context = redisGet(slots, command, key);
+    int			sts;
+
+    if (UNLIKELY(pmDebugOptions.desperate))
+	fputs(cmd, stderr);
+
+    sts = redisAsyncFormattedCommand(context, callback, arg, cmd, sdslen(cmd));
+    if (key)
+	sdsfree(key);
+    sdsfree(cmd);
+    if (sts != REDIS_OK)
+	return -ENOMEM;
+    return 0;
 }

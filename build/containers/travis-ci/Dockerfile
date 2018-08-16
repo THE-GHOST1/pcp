@@ -6,11 +6,11 @@ RUN dnf -y install \
         rpm-build redhat-rpm-config initscripts man procps \
         avahi-devel ncurses-devel readline-devel zlib-devel \
         perl perl-devel perl-generators perl-ExtUtils-MakeMaker \
-        python3 python3-devel \
+        python2-devel python3 python3-devel \
         bcc-tools e2fsprogs xfsprogs
 
 COPY . /pcp
-RUN cd /pcp && ./Makepkgs
+RUN cd /pcp && ./Makepkgs --verbose
 RUN cd /pcp/pcp-*/build/rpm && VER=$(pwd | cut -d- -f2 | cut -d/ -f1) && \
     dnf -y install \
         pcp-$VER-1.x86_64.rpm pcp-{conf,libs}-$VER-1.x86_64.rpm \

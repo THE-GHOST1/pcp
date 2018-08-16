@@ -121,8 +121,10 @@ fputstamp(struct timeval *stamp, int delimiter, FILE *out)
 {
     static char	timebuf[32];
     char	*ddmm, *yr;
+    time_t	time;
 
-    ddmm = pmCtime((const time_t *)&stamp->tv_sec, timebuf);
+    time = stamp->tv_sec;
+    ddmm = pmCtime(&time, timebuf);
     ddmm[10] = ' ';
     ddmm[11] = '\0';
     yr = &ddmm[20];
@@ -497,4 +499,34 @@ instance_hash(metric_t *metric, value_t *value, sds inst, pmDesc *desc)
     SHA1Update(&shactx, (unsigned char *)identifier, sdslen(identifier));
     SHA1Final(value->hash, &shactx);
     sdsfree(identifier);
+}
+
+void
+seriesPassBaton(seriesBatonPhase **head, unsigned int *refcount, void *arg)
+{
+    seriesBatonPhase	*next;
+
+    if (refcount && (*refcount = *refcount - 1) > 0) {
+	; /* phase is still in-progress, do nothing */
+    } else if ((next = (*head)->next) != NULL) {
+	*head = next;	/* move onto the next phase */
+	next->func(arg);
+    } else {
+	*head = NULL;	/* all phases are completed */
+    }
+}
+
+void
+seriesBatonPhases(seriesBatonPhase *phases, unsigned int count, void *arg)
+{
+    seriesBatonPhase	*tmp;
+    int			i;
+
+    assert(count > 0);
+    for (i = 0; i < count - 1; i++) {
+	tmp = &phases[i];
+	tmp->next = &phases[i+1];
+    }
+    phases[i].next = NULL;
+    phases[0].func(arg);	/* start phase one! */
 }

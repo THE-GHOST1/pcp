@@ -75,6 +75,7 @@ PCP_WEB_1.5 {
     pmLogLevelStr;
 } PCP_WEB_1.4;
 
+
 PCP_WEB_1.6 {
   global:
     pmDiscoverRegister;
@@ -113,3 +114,4 @@ PCP_WEB_1.7 {
     ProcessRedisReply;
     GetCommandKey;
 } PCP_WEB_1.6;
+

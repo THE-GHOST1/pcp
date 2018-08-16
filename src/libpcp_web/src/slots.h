@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2018 Red Hat.
+ * Copyright (c) 2018 Challa Venkata Naga Prajwal <cvnprajwal at gmail dot com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -21,8 +22,7 @@
 
 typedef struct redisSlotServer {
     sds			hostspec;	/* hostname:port or unix socket file */
-    redisContext	*redis;
-    redisAsyncContext *Asyncredis;
+    redisAsyncContext	*redis;
 } redisSlotServer;
 
 typedef struct redisSlotRange {
@@ -34,25 +34,41 @@ typedef struct redisSlotRange {
     redisSlotServer	*slaves;
 } redisSlotRange;
 
+typedef void (*redisInfoCallBack)(pmloglevel, sds, void *);
+typedef void (*redisDoneCallBack)(void *);
+
 typedef struct redisSlots {
-    redisContext	*control;
-    redisAsyncContext *Asynccontrol;/* initial Redis context connection */
+    redisAsyncContext	*control;	/* initial Redis context connection */
     sds			hostspec;	/* control socket host specification */
-    struct timeval	timeout;	/* system wide Redis timeout setting */
-    unsigned int	readonly;	/* expect no load requests (writing) */
     redisSlotRange	*slots;		/* all instances; e.g. CLUSTER SLOTS */
+    void		*events;
+
+    redisInfoCallBack	info;		/* TODO: remove - use baton */
+    void		*userdata;	/* TODO: remove - use baton */
 } redisSlots;
 
-extern redisSlots *redisSlotsInit(sds, struct timeval *);
+typedef void (*redisPhase)(redisSlots *, void *);	/* phased operations */
+
+extern redisSlots *redisSlotsInit(sds, redisInfoCallBack, void *, void *);
 extern int redisSlotRangeInsert(struct redisSlots *, struct redisSlotRange *);
-extern redisContext *redisGet(struct redisSlots *, const char *, sds);
+extern redisAsyncContext *redisSlotsConnect(redisSlots *, const char *);
+extern redisAsyncContext *redisGet(struct redisSlots *, const char *, sds);
 extern void redisFreeSlots(struct redisSlots *);
 
+extern int redisSlotsRequest(redisSlots *, const char *, sds, sds, redisAsyncCallBack *, void *);
 
-extern redisSlots *redisAsyncSlotsInit(sds );
-extern redisAsyncContext *redisAsyncGet(struct redisSlots *, const char *, sds);
-extern redisAsyncContext *redis_async_connect(sds );
+typedef struct {
+    unsigned int	magic;
+    int			version;
+    redisSlots		*redis;
+    redisInfoCallBack	info;
+    redisDoneCallBack	done;
+    void		*userdata;
+    void		*arg;
+} redisSlotsBaton;
 
-
+extern void initRedisSlotsBaton(redisSlotsBaton *, int,
+		redisInfoCallBack, redisDoneCallBack, void *, void *, void *);
+extern void doneRedisSlotsBaton(redisSlotsBaton *);
 
 #endif	/* SLOTS_H */

@@ -1497,7 +1497,7 @@ redis_load_slots_callback(redisAsyncContext *c, redisReply *reply, void *arg)
 	redis_load_version(baton);
     else
 		trigger_pmproxy2(baton);
-	doneRedisSlotsBaton(baton);
+	    doneRedisSlotsBaton(baton);
 }
 
 static void
@@ -1559,14 +1559,14 @@ redis_init(redisSlots **slotsp, sds server, int version_check,
     }
 
     /* create global EVAL hashes and string map caches */
-  //  redisScriptsInit();
-  //  redisMapsInit();
+    //  redisScriptsInit();
+    //  redisMapsInit();
 
     if ((baton = (redisSlotsBaton *)calloc(1, sizeof(redisSlotsBaton))) != NULL) {
 	if ((slots = redisSlotsInit(server, info, events, userdata)) != NULL) {
 	    initRedisSlotsBaton(baton, version_check, info, done,
 				    userdata, events, arg);
-	    baton->redis = *slotsp = slots;
+	    baton->redis = slots;
 	    redis_load_slots(baton);
 	    return;
 	}

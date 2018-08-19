@@ -31,7 +31,7 @@ struct ClientRequestData {
     redisAsyncContext *redisAsyncContext;
     sds ip;
     uv_tcp_t *client;
-    int64_t ClientID; //Internal implementaion
+    int64_t ClientID;
 };
 
 int updatekeystruct = 0;
@@ -49,10 +49,9 @@ on_close_cb(uv_handle_t *handle) {
     free(handle);
 }
 
-
 static void
 alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-    buf->base = malloc(suggested_size); //what size? break the msg (64 bit)
+    buf->base = malloc(suggested_size);
     assert(buf->base != NULL);
     buf->len = suggested_size;
 }
@@ -63,7 +62,7 @@ connectCallback(const redisAsyncContext *c, int status) {
         printf("Error: %s\n", c->errstr);
         return;
     }
-    //  printf("Connected...\n");
+    printf("\nConnected...\n");
 }
 
 static void
@@ -77,18 +76,14 @@ disconnectCallback(const redisAsyncContext *c, int status) {
     printf("\nDisconnected...\n");
 }
 
-
-
 static void
 after_write(uv_write_t *req, int status) {
     write_req_t *wr = (write_req_t *) req;
     if (wr->buf.base != NULL) {}
-    //  free(wr);
     if (status == 0) return;
     fprintf(stderr, "uv_write error: %s\n", uv_strerror(status));
     if (status == UV_ECANCELED) return;
     assert(status == UV_EPIPE);
-
     uv_close((uv_handle_t *) req->handle, on_close_cb);
 }
 
@@ -97,7 +92,6 @@ after_shutdown(uv_shutdown_t *req, int status) {
     struct ClientRequestData        *data;
 
     data = req->handle->data;
-    //redisAsyncDisconnect(data->redisAsyncContext);
     if (status < 0) {
         fprintf(stderr, "%s\n", uv_strerror(status));
     }
@@ -113,8 +107,9 @@ getCallback(redisAsyncContext *c, void *r, void *privdata){
     int                         len;
     int                         i;
 
-    sds s = sdsempty();
+    sds s =  sdsempty();
     redisReply *reply = r;
+
     write_req_t *wr = (write_req_t *) malloc(sizeof(*wr));
 
     if (reply == NULL) return;
@@ -129,7 +124,6 @@ getCallback(redisAsyncContext *c, void *r, void *privdata){
     printf("%s",s);
     wr->buf = uv_buf_init(s, sdslen(s));
     r = uv_write(&wr->req, data->client, &wr->buf, 1, after_write);
-    //  sdsfree(s);
 }
 
 
@@ -148,13 +142,12 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     sds                                 tempbuf;
     redisSlots                          *expectedslots;
     redisAsyncContext                   *desiredcontex;
-    sds evalstr = sdsempty();
-
 
 
     if (nread <= 0 && buf->base != NULL) {
         free(buf->base);
     }
+
     if (nread == 0) return;
 
     if (nread < 0) {
@@ -173,7 +166,7 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 
     reader = redisReaderCreate();
 
-    redisReaderFeed(reader, (char *) (buf->base), strlen(buf->base));
+    redisReaderFeed(reader, (char *)(buf->base), strlen(buf->base));
 
     ret = redisReaderGetReply(reader, &reply);
 
@@ -212,7 +205,6 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     redisAsyncSetConnectCallBack(desiredcontex,connectCallback);
     redisAsyncSetDisconnectCallBack(desiredcontex,disconnectCallback);
 
-
     data = handle->data;
 
     printf("\nClient ID :  %d \n",data->ClientID);
@@ -223,10 +215,7 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 
     r = redisAsyncFormattedCommand(desiredcontex, getCallback, (void *)data,Clientcommand,strlen(Clientcommand));
     assert(r==0);
-    fp=fopen(logfile,"a+");
-    fputs(command,fp);
-    fputs("\n",fp);
-    fclose(fp);
+
     sdsfree(sdsbuffer);
     sdsfree(keys);
     freeReplyObject(reply);
@@ -234,16 +223,16 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 
 static void
 on_connection(uv_stream_t *server, int status) {
-    uv_tcp_t            *stream;
-    int                 r;
-    char                addr[16];
-    char                client_ip[32];
-    struct sockaddr_in name;
+    uv_tcp_t                *stream;
+    int                     r;
+    char                    addr[16];
+    char                    client_ip[32];
+    struct sockaddr_in      name;
+
     struct ClientRequestData *data = malloc(sizeof(*data));
 
     int namelen = sizeof(name);
     ClientCounter++;
-
     assert(status == 0);
 
     stream = malloc(sizeof(uv_tcp_t));
@@ -296,6 +285,7 @@ void
 trigger_pmproxy2(redisSlots *slots) {
 
     globalredisSlots = slots;
+
     if(RUNONCEONLY){
         int         r;
         r = init_server();
@@ -306,12 +296,9 @@ trigger_pmproxy2(redisSlots *slots) {
 
 int
 main() {
-//    redisSlots *slots;
-//    if ((slots = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
-//        return NULL;
-//    trigger_pmproxy2();
     sds       hostspec;
     hostspec = sdsnew("127.0.0.1:7001");
-    redis_init(NULL, hostspec, 0, NULL,NULL, NULL, NULL, NULL);
+    uv_loop_init(uv_default_loop());
+    redis_init(NULL, hostspec, 0, NULL,NULL, NULL, uv_default_loop(), NULL);
 
 }

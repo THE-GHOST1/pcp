@@ -79,35 +79,6 @@ redisScriptsInit(void)
 
     }
 }
-int
-redis_async_submitcb(redisSlots *redis, const char *command, sds key, sds cmd, redis_callback callback, void *arg, void *handle)
-{
-    redisAsyncContext   *Asynccontext = redisAsyncGet(redis, command, key);
-    redisReply		*reply;
-    int			sts;
-
-    if (UNLIKELY(pmDebugOptions.desperate))
-        fputs(cmd, stderr);
-
-    redisEventAttach(Asynccontext, uv_default_loop());
-    redisAsyncSetConnectCallBack(Asynccontext, connectCallback);
-    redisAsyncSetDisconnectCallBack(Asynccontext,disconnectCallback);
-
-
-    redisAsyncFormattedCommand(Asynccontext, callback, arg, cmd, sdslen(cmd));
-
-
-    uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-
-    if (key)
-        sdsfree(key);
-    sdsfree(cmd);
-    if (sts != REDIS_OK)
-        return -ENOMEM;
-
-    return 0;
-}
-
 
 static redisScript *
 redisGetScript(redisScriptID id)
@@ -1588,8 +1559,8 @@ redis_init(redisSlots **slotsp, sds server, int version_check,
     }
 
     /* create global EVAL hashes and string map caches */
-    redisScriptsInit();
-    redisMapsInit();
+  //  redisScriptsInit();
+  //  redisMapsInit();
 
     if ((baton = (redisSlotsBaton *)calloc(1, sizeof(redisSlotsBaton))) != NULL) {
 	if ((slots = redisSlotsInit(server, info, events, userdata)) != NULL) {

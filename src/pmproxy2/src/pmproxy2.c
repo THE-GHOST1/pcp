@@ -8,11 +8,11 @@
 #include <signal.h>
 #include <errno.h>
 #include <limits.h>
+#include <slots.h>
 #include <redis.h>
 #include <net.h>
 #include <sdsalloc.h>
 #include <libuv.h>
-#include <slots.h>
 #include <schema.h>
 #include "CommandKeys.h"
 
@@ -68,16 +68,12 @@ connectCallback(const redisAsyncContext *c, int status) {
 
 static void
 disconnectCallback(const redisAsyncContext *c, int status) {
-    struct ClientRequestData            *data;
 
     if (status != REDIS_OK)
     {
         printf("Error: %s\n", c->errstr);
         return;
     }
-
-    data=c->data;
-    printf("Client %d disconnecting",data->ClientID);
     printf("\nDisconnected...\n");
 }
 
@@ -206,7 +202,7 @@ after_read(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
     char *Clientcommand = malloc(sdslen(tempbuf));
     strcpy(Clientcommand, tempbuf);
 
-    desiredcontex = redisAsyncGet(globalredisSlots, NULL, keys);
+    desiredcontex = redisGet(globalredisSlots, NULL, keys);
 
     if (desiredcontex->err) {
         printf("Error: %s\n", desiredcontex->errstr);
@@ -310,7 +306,12 @@ trigger_pmproxy2(redisSlots *slots) {
 
 int
 main() {
+//    redisSlots *slots;
+//    if ((slots = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
+//        return NULL;
+//    trigger_pmproxy2();
     sds       hostspec;
     hostspec = sdsnew("127.0.0.1:7001");
-    redis_init(hostspec, NULL, NULL);
+    redis_init(NULL, hostspec, 0, NULL,NULL, NULL, NULL, NULL);
+
 }

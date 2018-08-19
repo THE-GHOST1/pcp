@@ -16,6 +16,7 @@
 #define SLOTS_H
 
 #include "redis.h"
+#include "series.h"
 
 #define MAXSLOTS	(1 << 14)
 #define SLOTMASK	(MAXSLOTS-1)

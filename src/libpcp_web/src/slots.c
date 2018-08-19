@@ -47,19 +47,6 @@ redisSlotsInit(sds hostspec, redisInfoCallBack info, void *events, void *userdat
     return slots;
 }
 
-redisSlots *
-redisAsyncSlotsInit(sds hostspec)
-{
-    redisSlots		*pool;
-
-    if ((pool = (redisSlots *)calloc(1, sizeof(redisSlots))) == NULL)
-        return NULL;
-
-    pool->hostspec = sdsdup(hostspec);
-    pool->Asynccontrol = redis_async_connect(hostspec);
-    return pool;
-}
-
 static int
 slotsCompare(const void *pa, const void *pb)
 {

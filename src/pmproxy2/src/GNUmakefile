@@ -10,6 +10,11 @@ HFILES = CommandKeys.h
 LLDLIBS = $(PCP_WEBLIB)
 LCFLAGS += -I$(TOPDIR)/src/libpcp_web/src
 
+ifeq "$(HAVE_LIBUV)" "true"
+LCFLAGS += $(LIBUVCFLAGS) -DHAVE_LIBUV=1
+LLDLIBS += $(LIB_FOR_LIBUV)
+endif
+
 LDIRT = pmproxy2.log
 
 default: $(CMDTARGET)

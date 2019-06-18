@@ -11,6 +11,7 @@ echo "QA output created by $seq"
 . ./common.bcc
 
 _pmdabcc_check
+_bcc_check_ArgString || _notrun "bcc is broken (ArgString bug) on this platform"
 
 status=1       # failure is the default!
 signal=$PCP_BINADM_DIR/pmsignal
@@ -29,6 +30,7 @@ _stop_auto_restart pmcd
 
 # real QA test starts here
 cat <<EOF | _pmdabcc_install
+# Installed by PCP QA test $seq on `date`
 [pmda]
 modules = sysfork
 prefix = bcc.

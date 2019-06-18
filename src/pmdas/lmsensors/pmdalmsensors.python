@@ -1,0 +1,201 @@
+#!/usr/bin/env pmpython
+#
+# Copyright (c) 2012,2018-2019 Red Hat.
+# Copyright (c) 2008,2012 Aconex.  All Rights Reserved.
+# Copyright (c) 2004 Silicon Graphics, Inc.  All Rights Reserved.
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 2 of the License, or (at your
+# option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# for more details.
+#
+
+""" PCP lmsensors Performance Metrics Domain Agent """
+
+# pylint: disable=bad-continuation,line-too-long,too-few-public-methods
+
+import subprocess
+import re
+import argparse
+import os.path
+from pcp.pmda import PMDA, pmdaMetric
+from pcp.pmapi import pmUnits, pmContext as PCP
+import cpmapi as c_api
+
+sensorvalues = dict()   # lookup sensorname -> sensorvalue (temp/fan)
+sensornames = dict()    # lookup sensornumber -> sensorname
+basename = "lmsensors"
+
+def lmsensors_get():
+    ''' read sensor data '''
+
+    if args.inject:
+        # we will inject sensor data from a file
+        # f = open(str(sys.argv[1]), "r")
+        f = open(args.inject.name, args.inject.mode)
+        output = f.read()
+    else:
+        # we will read real sensor data
+        p = subprocess.Popen(["/usr/bin/sensors", "-u"], stdout=subprocess.PIPE)
+        output = p.communicate()[0]
+
+    if args.debug:
+        print("function lmsensors_get(), raw output from sensors:\n", output)
+
+    for outline in output.splitlines():
+        if args.inject:
+            outline2 = outline                  # just copy data
+        else:
+            outline2 = outline.decode("utf-8")  # required if source is 'sensors -u'
+
+        outline2.rstrip()
+        if args.debug:
+            if args.debug == 2:
+                print("  inputline:", outline2)
+
+        # We get 4 levels of variables from the sensors output,
+        # and construct a hirachy of metrics.
+        # For example:
+        #
+        # coretemp-isa-0000                 # level0
+        # Adapter: ISA adapter              # level1
+        # Package id 0:                     # level2
+        #   temp1_input: 43.000             # level3
+        #   temp1_max: 100.000
+        #   temp1_crit: 100.000
+        #   temp1_crit_alarm: 0.000
+        # Core 0:                           # level2
+        #   temp2_input: 41.000             # level3
+        #   temp2_max: 100.000
+        #   temp2_crit: 100.000
+        #   temp2_crit_alarm: 0.000
+        #
+        # ..will become:
+        # coretemp_isa.isa_adapter.package_id_0.temp1
+        # coretemp_isa.isa_adapter.core_0.temp2
+
+        if re.search(r'^[a-z0-9-_]*[^:]$', outline2):
+            tmp = outline2.lower()                   # i.e. coretemp-isa-0000
+            level0 = re.sub(r'-[0-9]+', "", tmp)
+            if args.debug:
+                if args.debug == 2:
+                    print("    assigned level0:", level0)
+            continue
+        if re.search(r'^Adapter:', outline2):
+            tmp = re.sub(r'Adapter: ', "", outline2)
+            tmp2 = tmp.lower()
+            level1 = re.sub(r'\s', "-", tmp2, 5)     # i.e. isa-adapter
+            if args.debug:
+                if args.debug == 2:
+                    print("    assigned level1:", level1)
+            continue
+        if re.search(r'^[a-zA-Z0-9-][a-zA-Z0-9-_\s]*:', outline2):
+            tmp = re.sub(r':', "", outline2)
+            tmp2 = tmp.lower()
+            level2 = re.sub(r'\s', "-", tmp2, 5)     # i.e. package_id_0
+            if args.debug:
+                if args.debug == 2:
+                    print("    assigned level2:", level2)
+            continue
+
+        # From the lines left now, we are just interested in m/_input/.
+        # Everything else, for example lines with temp1_max_hyst: or
+        # temp1_emergency:, should be ignored.
+        if not re.search(r'_input: .*', outline2):
+            continue
+
+        tmp = re.sub(r'_input: .*', "", outline2)
+        level3 = re.sub(r'\s+', "", tmp)             # i.e. temp1
+        if args.debug:
+            if args.debug == 2:
+                print("    assigned level3:", level3)
+
+        tmp = re.sub(r'.*: ', "", outline2)
+        sensorvalue = re.sub(r'\..*', "", tmp)       # i.e. 42, actual sensor value
+        sensorvalue.rstrip()
+
+        final_name = (level0 + "." + level1 + "." + level2 + "." + level3).replace('-', '_')
+        sensorvalues[final_name] = sensorvalue
+
+
+class LmsensorsPMDA(PMDA):
+    ''' lmsensors performance metrics domain agent '''
+
+    def lmsensors_fetch_callback(self, cluster, item, inst):
+        ''' Returns a list of value,status (single pair) for one metric '''
+
+        lmsensors_get()
+        if cluster == 0:
+            # sanity checking: sort out temperatures below -127.
+            # some sensors report -128 in error, from time to time.
+            if re.search(r'temp', sensornames[item]):
+                if int(sensorvalues[sensornames[item]]) < -127:
+                    return None
+
+            # sanity checking: sort out negative values from fans
+            if re.search(r'fan', sensornames[item]):
+                if int(sensorvalues[sensornames[item]]) < 0:
+                    return None
+
+            # if we made it until here, plainly return the read value
+            return [int(sensorvalues[sensornames[item]]), 1]
+            # return [42, 1]
+        return [c_api.PM_ERR_PMID, 0]
+
+    def __init__(self, name, domain):
+        ''' Initialisation - register metrics, callbacks, drop privileges '''
+
+        PMDA.__init__(self, name, domain)
+        self.connect_pmcd()
+
+        sensorcounter = 0
+        for k in sensorvalues:
+            keysplit = k.split(".")
+
+            self.add_metric(basename + "." + keysplit[0] + "." + keysplit[3],   # metric name
+                pmdaMetric(self.pmid(0, sensorcounter),                         # ID
+                c_api.PM_TYPE_U32, c_api.PM_INDOM_NULL, c_api.PM_SEM_INSTANT,   # type, indom, semantics
+                pmUnits(0, 0, 0, 0, 0, 0)),                                     # and units.
+                'sensor values from "sensors -u"',                              # short
+                'sensor values from ' + k)                                      # long help
+            sensornames[sensorcounter] = k
+            sensorcounter += 1
+
+        self.set_fetch_callback(self.lmsensors_fetch_callback)
+        self.set_user(PCP.pmGetConfig('PCP_USER'))
+        if args.debug:
+            print("debug from __init__:")
+            for k in sensorvalues:
+                print("  sensorvalues key", k, " : value ", sensorvalues[k])
+            for k in sensornames:
+                print("  sensornames key", k, " : value ", sensornames[k])
+            # for item in range(i):
+                # print("  final sensorvalues: ", sensorvalues[sensornames[item]])
+
+
+# main
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--inject", type=argparse.FileType('r'),
+                    help="inject data from file instead of using sensors")
+parser.add_argument("-d", "--debug", type=int, choices=[0, 1, 2],
+                    help="change debug level, 0 is default")
+args = parser.parse_args()
+
+# if args.inject:
+
+if not os.path.isfile('/usr/bin/sensors'):
+    print("/usr/bin/sensors not found!  Is lm_sensors installed?")
+    exit(1)
+
+lmsensors_get()
+
+if args.debug:
+    for key in sensorvalues:
+        print("dict sensorvalues: ", key, " : ", sensorvalues[key])
+if __name__ == '__main__':
+    LmsensorsPMDA('lmsensors', 74).run()

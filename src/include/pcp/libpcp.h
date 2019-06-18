@@ -7,7 +7,7 @@
  *	remain fixed across releases, and they may not work, or may
  *	provide different semantics at some point in the future.
  *
- * Copyright (c) 2012-2018 Red Hat.
+ * Copyright (c) 2012-2019 Red Hat.
  * Copyright (c) 2008-2009 Aconex.  All Rights Reserved.
  * Copyright (c) 1995-2002 Silicon Graphics, Inc.  All Rights Reserved.
  *
@@ -50,10 +50,11 @@ extern "C" {
 #define PROXY_PROTOCOL "proxy"
 
 /*
- * port that clients connect to pmwebd(1) by default
+ * HTTP[S] connections come here by default, over-ride with $WEBAPI_PORT
+ * in environment
  */
-#define PMWEBD_PORT 44323
-#define PMWEBD_PROTOCOL "http"
+#define WEBAPI_PORT 44323
+#define WEBAPI_PROTOCOL "http"
 
 /*
  * internal libpcp state ... PM_STATE_APPL means we are at or above the
@@ -608,6 +609,7 @@ pmlabel_intrinsic(pmLabel *lp)
     return (lp->flags & PM_LABEL_OPTIONAL) == 0;
 }
 PCP_CALL extern int __pmAddLabels(pmLabelSet **, const char *, int);
+PCP_CALL extern pmLabelSet *__pmDupLabelSets(pmLabelSet *, int);
 PCP_CALL extern int __pmParseLabelSet(const char *, int, int, pmLabelSet **);
 PCP_CALL extern int __pmGetContextLabels(pmLabelSet **);
 PCP_CALL extern int __pmGetDomainLabels(int, const char *, pmLabelSet **);
@@ -1220,6 +1222,8 @@ PCP_CALL extern void __pmServerSetServiceSpec(const char *);
 typedef void (*__pmServerCallback)(__pmFdSet *, int, int);
 PCP_CALL extern void __pmServerAddNewClients(__pmFdSet *, __pmServerCallback);
 PCP_CALL extern int __pmServerOpenRequestPorts(__pmFdSet *, int);
+PCP_CALL extern int __pmServerGetRequestPort(int, const char **, int *);
+PCP_CALL extern int __pmServerSetupRequestPorts(void);
 PCP_CALL extern void __pmServerCloseRequestPorts(void);
 PCP_CALL extern void __pmServerDumpRequestPorts(FILE *);
 PCP_CALL extern char *__pmServerRequestPortString(int, char *, size_t);

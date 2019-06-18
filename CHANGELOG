@@ -1,5 +1,360 @@
-pcp-4.1.2 (14 September 2018)
-    - Work in progress (https://pcp.io/roadmap)
+pcp-4.3.3 (28 June 2019)
+    - Work in progress, see https://pcp.io/roadmap
+
+pcp-4.3.2 (26 April 2019)
+    - Client tools and utilities:
+	pcp-dstat: fix invisible gray coloring ansi escape code
+	pcp-dstat: GH#624 handle the end-of-archive condition correctly
+	pcp-pidstat: drop unused -h/--host option
+	pcp-atopsar: RHBZ1673996 fix -A for replying from archive
+	pcp-atopsar: improve handling of mark records and log end
+	pcp2spark: minor output tweak
+	pcp2zabbix: send first metrics without waiting
+	pcp2template: aid to creating new pcp2xxx tools
+	pmlogrewite: diagnostic changes to use new flags
+	pmrep: tweak output in case of no values available with -X
+	pmrep: introduce fixed header (-7, --fixed-header option)
+	pmrep/pcp2xxx: more helpful error message when pmcd not running
+	pmsnap: fix leak of Xvfb processes
+	pmgadgets pmgsys.py: make this work with Python2 and Python3
+	pmgadgets: fixes so it builds again with Qt5
+	pmview: set correct default time if no -t on command line
+    - PMDA additions, enhancements and bug fixes:
+	pmdalinux: fixes to parsing of /proc/zoneinfo
+	pmdalinux: fix two metrics with no values on some kernel versions
+	pmdalinux: updates to SYSV IPC metrics
+	pmdaproc: fix Linux cgroup *service_bytes.* metric metadata
+	pmdabcc: uprobe_hits: fix use of wrong variable
+	pmdabcc: make cachestat module currently working with ext4 only
+	pmdabcc: add kprobe hit count BPF/Python module
+	pmdabcc: keep uprobes_hits logging consistent with other hit modules
+	several pmdas: remove PM_ERR_AGAIN uses, correct PMDA_FETCH_* macros
+	txmon: update from PMDA_INTERFACE_2 to PMDA_INTERFACE_7
+	pmdaperfevent: deprecate pmdapapi, upgrade to perfevent
+	pmdanvidia: fix up indom help text macro name typo
+	pmdazimbra: major overhaul
+    - Server-side utilities and log management scripts:
+	systemd: fix Environment parameter usage
+	pmdaroot: ensure zombie PMDA processes are reaped
+	pmproxy: initial pmseries and grafana datasource REST APIs
+	pmproxy, libpcp_web: support for pmproxy configuration file
+	pmcd: RHBZ1641161 add support for PMDA suspend and resume (fencing)
+	pmlogger_daily.sh: try harder in the presence of errors
+	pmwebd: fix a broken diagnostic causing crashes
+    - Security Enhanced Linux:
+	RHBZ1693332 update BPF permissions for pmdabcc
+	fix some fallout from the systemd timer transition
+	allow pcp_pmcd_t module_request access from class system
+	allow the nvidia pmda to dlopen libnvidia-ml
+    - libpcp, libpcp_pmda, libpcp_mmv, libpcp_web and language bindings
+	perl PMDA.pm: expose PMDA_FETCH_* macros
+	pmapi.h: add appl3, appl4 and appl5 debug flags
+	libpcp_web: refactoring and support for Redis cluster protocol
+    - Misc build, infrastructure and packaging updates:
+	builddefs: rework qmake recipe
+	replace libdbd-pg-perl Debian dep with python3-psycopg2
+	add python-devel (v2) explicitly for el7 vagrants
+	update generated rpm spec to drop 'Group' keyword
+	vagrant: various fixes, improvements to provisioning scripts
+	configure: set pcp_rc_dir correctly for FreeBSD
+	configure: allow --with-qt=DIR to specify QT installation dir
+    - Documentation and QA infrastructure:
+	qa: adjust for Python 3 only systems
+	qa: massive change to remove init script chatter
+	qa/check et al: rework callback workflow
+	qa/common.check: change to using systemctl if available
+	qa/check.callback captures the before+after state of pmcd and pmlogger
+	qa/check.callback captures any new selinux AVC denials from each test
+	INSTALL.md: update and clarify a few things
+
+pcp-4.3.1 (27 February 2019)
+    - Client tools and utilities:
+	pcp-dstat: improve --time option handling with no other arguments
+	pcp-dstat: handle complete instance removal with --full mode
+	pcp-atop: update to v2.4.0 atoptool.nl sources
+        . reporting pressure stall information
+        . reporting infiniband statistics
+        . reporting perf_event statistics
+        . reporting nvidia GPU stats 
+	pmseries: error handling improvements when parsing fails
+	pmseries: ensure commas separate labels in metadata reporting
+	pmseries: improve user friendliness of option handling
+	pmseries: shell completions added
+	pmseries: install a pmseries.conf
+	pmseries: globbing support on global name lookups too
+	pmrep: add support for sorting -X output by values
+	pmrep: fix a dynamic header corner case with missing values
+	pmlogger: add systemd timers as cron alternative
+	pmie: add systemd timers as cron alternative
+	pmie: re-implement #'instancename' indom lookup
+	pmie: fix for segv and bad sum_inst() use
+	pmview: fix a missing timeout slot connection
+	pmview: add in the step() signal/slot connections
+    - PMDA additions, enhancements and bug fixes:
+	linux: add support for pressure-stall information metrics
+	openbsd: remove remaining /dev/kmem reading
+	openbsd: fixes for 32 bit kernels
+	openbsd: add kernel.all.uptime
+	openbsd: fix cpu time metrics - SMP and CP_SPIN support
+	netbsd: fixes for 32 bit kernels
+	netbsd: add kernel.all.uptime
+	bcc: handle gone processes in ustat module
+	bcc: adjust biolatency module tracepoints
+	dm: new VDO device metrics
+	dm: fix mishandling of missing VDO kernel stats
+	nvidia: add support for per-process nvidia metrics
+	pmproxy: extend MMV to support new pmproxy metrics
+    - Server-side utilities and log management scripts:
+	pmcd: allow use of an optional pmcd.conf.access file
+	rc_pmcd: optional PMDA ./Upgrade to resolve upgrade issues
+	pmproxy: fix shutdown issues in --timeseries mode
+	pmlogger_check: make pmlogconf check optional
+	pmlogconf: add per-CPU interrupts metrics to the zeroconf set
+	pmlogconf: additional /proc/vmstat metrics to default set
+	pmwebd: tweak y-axis labels in png output
+	pmwebd: fix an open file descriptor leak
+    - libpcp, libpcp_pmda, libpcp_mmv, libpcp_web and language bindings
+	libpcp: fix compilation for --with-threads=no configure
+	libpcp: exclude indom instances level labels in result from pmLookupLabels
+	libpcp: the big libpcp lock is no longer recursive
+	libpcp: refactor registered.mutex use
+	libpcp_web: add .ini configuration file parsing
+	python pmapi: add __str__ handler for class pmLabelSet
+	python api: Rename pmconfig.py helper function - get_sorted_results()
+    - Misc build, infrastructure and packaging updates:
+	python: fix Python installations flags for DIST_ROOT=
+	Revert "pmlogger_daily: use whole day granularity for PCP_COMPRESSAFTER"
+	Wider use of automated builds through Vagrant for QA and releases
+	build: add -I paths for cppcheck, fix travis-ci checking
+	build: add conditional BuildRequires libuv-devel in fedora.spec`
+	travis-ci: tweak service timeouts
+	pmns: don't package .NeedRebuild for SUSE distros
+	pmns/Rebuild: add warning (with -v) for skipped root_foo file
+	Qt: correctly insert compiler flags, release vs debug build fixups
+	configure, Makepkgs, et al: move Qt version detection into configure
+    - Security Enhanced Linux:
+	Update shm,sem permissions for userdomains
+	Reduce size of policy package (now that we have overarching rules)
+    - Documentation and QA infrastructure:
+	qa/admin/check-vm: refactoring and customization for all platforms
+	qa/common.check: improvements for pmlogger and pmie tests
+	build: add fedora/rhel testsuite dep on redhat-rpm-config
+	docs: update pmLookupLabels(3) and pmseries(1)
+	qa: pervasive NetBSD, OpenBSD and OpenIndiana changes
+
+pcp-4.3.0 (21 December 2018)
+    - Client tools and utilities:
+	- Add pmseries(1) for fast, scalable time series querying (experimental)
+	- pmrep, pcp2xxx: add support for the --names-change option
+	- pmrep, pcp2xxx: support for the --ignore-unknown metrics option
+	- Implement the dstat --full option to expand instances
+	- Add an 'entropy' dstat plugin configuration file
+	- pcp2elasticsearch: support for es_search_type config flag
+	- pcp2elasticsearch: reduce logging in server down scenarios
+	- pcp-atop: fix an incorrect use of varargs vfprintf interface
+	- pmlogextract: numerous scalability improvements
+	- pmchart: fix sigsegv on non-existant archive via command line
+    - PMDA additions, enhancements and bug fixes:
+	- FreeBSD: add kernel.all.uptime, mem.freemem metrics
+	- FreeBSD: fix 32 vs 64 bit types on memory and CPU metrics
+	- FreeBSD: fix units on some disk (bytes) metrics
+	- FreeBSD: fix CPU count logic error affecting per-CPU metrics
+	- perfevent: add hv_24x7 perf events
+	- perfevent: add support for raw perf events
+	- pmdapostgresql: add optional 'osuser' to configuration
+    - Log rotation, management scripts, compression and server-side utilities:
+	- zeroconf: change logging frequency for proc metrics to 30 seconds
+	- rc scripts: improve systemd interaction for local pmie
+	- pmlogger_daily: whole day granularity for PCP_COMPRESSAFTER config
+	- pmlogger_check: resolve a 'cat: broken pipe' warning message
+	- pmlogrewrite config files for FreeBSD metadata changes
+	- pmproxy: auto-loading of historical timeseries from discovery
+	- pmproxy: add --timeseries option to switch libpcp/uv versions
+	- pmwebd: tolerate live archives with multi-hour-old volumes
+    - Misc build, infrastructure and packaging updates:
+	- Fixed RHEL-5 build packaging for nfsclient and lmsensors PMDAs
+	- Enable dstat -> pcp-dstat binary symlink on more platforms now
+	- Drop the elasticsearch python[23]-urllib3 spec file dependency
+	- Changes for Mac OS X HomeBrew build and packaging
+	- Support for Mac OS X Mojave latest release
+    - libpcp, libpcp_pmda, libpcp_mmv, libpcp_web and language bindings
+	- libpcp: instance filtering for derived metrics
+	- libpcp: add scalar() for derived metrics
+	- libpcp: fix process existence checks on FreeBSD
+	- libpcp: be more defensive in pmMergeLabelSets
+	- libpcp: add an integrity check in __pmMergeLabelSets
+	- python pmapi: fix a crash in labels wrapper functions
+	- python pmapi: fix a crash in fetchgroup clearing function
+	- python pmapi: rework labels lookup, merge and free functions
+	- python pmconfig: fix logic error in get_sorted_results function
+	- python logimport: fix wrong variable usage in pmiPutLabel
+    - Security Enhanced Linux:
+	- Generic policy rules to allow pcp_pmcd process to read system objects
+	- Fix the build on older selinux versions (RHEL6 era)
+    - Documentation and QA infrastructure:
+	- logimport(3): new pmiPutLabel(3) API function for adding labels
+	- docs: improve formatting for Vector containers screenshot
+	- docs: tweaks for pcp-dstat.1 to use same conventions as pmrep.1
+	- docs: correct typo in INSTALL notes for MacOSX
+	- docs: fix formatting in mmv(5) labels section, add more detail
+	- docs: add python synopsis and examples in pmMergeLabels(3)
+	- docs: add python synopsis in pmLookupLabels(3)
+	- qa/README.vm: instructions for setting up VMs for QA
+	- qa: add kernel group for base OS PMDA testing
+	- qa: add sample.controller.mirage to sample PMDA
+	- qa: numerous Vagrantfile updates and improvements
+	- qa: add helper tool for reporting internal/external sha IDs
+	- qa/admin/check-vm: Mac OS X changes
+	- qa/admin/check-vm et al: refactor for Vagrant
+
+pcp-4.2.0 (16 November 2018)
+    - Client tools and utilities:
+	- pcp-dstat: fix cursor offsetting in unusual terminal states
+	- pcp-dstat: additional exception handling for I/O error on exit
+	- pcp-iostat: remove variable named 'await', now a keyword
+	- pmchart: ensure only one system activities menu item is presented
+	- pmchart: fix incorrect use of std::vector::resize() for single stepping
+	- pmie: fix small error in expression tree binding
+	- pmie: fix instance info propogation when metrics become available
+	- pmie: fix rare corner case logic errors
+	- pmrep, pcp2{json,xml}: properly handle broken pipe
+    - PMDA additions, enhancements and bug fixes:
+	- pmdapodman (new): export podman container and pod state and statistics
+	- pmdaroot, pmdaproc: add support for 'podman' containers
+	- pmdapostgresql: fix regression in config parser
+	- pmdapostgresql: add port number to config options
+	- pmdapostgresql: tone down the missing table and column warnings
+	- pmdabcc: add ucalls/ustat Tcl support
+	- pmdalmsensors: re-implement in python, update
+	- pmdadocker: fix a missed lock release issue coverity reported
+	- pmdaelasticsearch: Change perl implementation to python
+	- pmdaelasticsearch: enable user selection from conf file
+	- pmdanetbsd: add hinv.machine
+	- pmdaopenbsd: fixups for OpenBSD 6.4
+	- pmdasample: add sample.ghosts.* metrics
+    - Log rotation, management scripts, compression and server-side utilities:
+	- pmlogger_daily: change workflow to cull early and reliably compress
+	- pmcd_wait: default to using unix domain sockets if supported
+	- pmlogrewrite: Bug: Too many labelsets deleted.
+	- pmlogrewrite: Allow instance names to be used to specify instances labels.
+	- pmlogrewrite: Remove support for "ALL" as a text record type.
+	- pmlogrewrite: escape characters in the content string for text records.
+	- pmlogrewrite: Help Text: Support filtering by content.
+	- pmlogrewrite: Help Text: Additional text type allowed.
+	- pmlogrewrite: fix error handling when duplicate output files found
+    - libpcp, libpcp_pmda, libpcp_mmv, libpcp_web and language bindings
+	- pmdaproc.sh: change a few warnings to use $prog instead of Install
+	- libpcp: fix buffer length error in pmAtomStr_r(3)
+	- python api: propagate pmFetch(3) result for fetchgroup users
+    - Security Enhanced Linux:
+	- selinux: update container policy for pmdaroot/podman
+	- selinux: fix bpf related build issue
+	- selinux: RHBZ1626487 unix_read on gpsd_t:shm
+	- selinux: RHBZ1633211 bpf class & inheritence issues
+	- selinux: RHBZ1634205 add pmlogger/cache_home context dir:search
+        - selinux: RHBZ1635394 fix configure glue to trigger existing rule inclusion
+        - selinux: RHBZ1535522 add pmcd/cache_home context dir:search
+    - Misc build, infrastructure and packaging updates:
+	- build: Fix FreeBSD Qt builds
+	- build: fix a number of Debian packaging issues
+	- build: pcp-gui debian packaging made to be conditional
+	- build: rpm spec and manifest updates for pmdadm dmstats
+	- build: deprecate pcp-collector and pcp-monitor RPM packages
+	- build: add option for python bcc packages from iovisor repos
+	- build: add --check option to Makepkgs script for static checks
+	- build: corrections to dstat package replacement in rpm spec
+    - Documentation and QA infrastructure:
+	- docs: pcp2spark doc and example code tweaks
+	- docs: update pmdadm(1) man page
+	- docs: update LOGIMPORT(3) man page to mention python wrapper
+	- docs: dbpmda(1) - correct default for -q ... it is 3 not 5
+	- docs: updates the containers tutorial for 'podman'
+
+pcp-4.1.3 (21 September 2018)
+    - Client tools and utilities:
+	- pcp-dstat: add CSV output support for pcp-dstat
+	- pcp-dstat: improved handling of no-values-available scenarios
+	- docs: add an example of remote host monitoring in pcp-dstat(1)
+	- pmlogrewrite: Initial support for creating new label records.
+	- pmlogrewrite: Operate on labels for individual instances and labels.
+	- pmlogrewrite: Support changing label names and values.
+	- pmrep: enable proc net metricset in default pmrep.conf
+	- pmrep: properly omit unit info with separate header when requested
+	- pmrep: add compact "top-3 cpu users" example in pmrep.1
+	- pcp2zabbix: read zabbix_port from conf file properly
+	- docs Improve pcp2spark man page, add readme and examples
+	- pcp2spark: add bash/zsh completions
+    - PMDA additions, enhancements and bug fixes:
+        - provide trivial-pmda perl and python versions as well
+	- pmdakvm: fix checks for running without perf_event support
+	- pmdaperfevent: return correct CPU numbers in lower SMT levels
+	- pmdapostgresql: support postgresql v10, implement reconnection
+	- pmdapostgresql: completely reimplemented in python
+	- pmdapostgresql: intialize pmdaCache files to be group writeable
+	- docs: update pmdapostgresql(1) man page
+	- pmdaredis: handle Redis v5 memory stats changes
+	- pmdabcc: add support for dynamic process filtering
+	- pmdabcc: tcpretrans: use TGID not kernel PID as user-space PID
+	- pmdabcc: add module to trace per-proc per-syscall stats
+	- pmdabcc: add ucalls module for tracing app method calls
+	- pmdabcc: use module name as cluster label
+	- pmdabcc: return error from store callback by default
+	- pmdabcc: add detailed per-pid per-syscall support for syscount
+	- pmdabcc: add high-resolution pid tracking alternative to tcpperpid
+	- pmdabcc: add latency support for syscount module
+	- pmdabcc: add process filtering support for fs dist modules
+	- pmdabcc: try to use BPF to capture parent PID in execsnoop
+	- pmdabcc: allow modules to bypass pmdaCache
+	- pmdabcc: update TCP modules for dynamic process filtering
+	- pmdabcc: add cachestat module
+	- pmdabcc: use two-step cache invalidation in bioperpid
+	- pmdabcc: support call latency reporting in ucalls module
+	- pmdabcc: exit poller thread if BPF is cleaned up
+	- pmdabcc: omit residual IO attributed to PID 0 by default
+	- pmdabcc: rework tcpperpid caching to report total transfer stats
+	- pmdabcc: add ustat module based on BCC ustat
+	- docs: minor pmdabcc.1 man page and bcc.conf updates
+	- pmdaprometheus: fix exception in store callback
+	- pmdaprometheus: instance labels were incorrectly returned as metric labels
+    - Log rotation, management scripts, compression and server-side utilities:
+	- pmlogger_check: run periodic compression when exiting early
+	- pmlogger_rewrite: cleanup temporary /var/tmp/<pid>.ok files
+	- daily/check scripts: consistently set log file ownership
+    - libpcp, libpcp_pmda, libpcp_mmv, libpcp_web and language bindings
+	- add new default derived metrics for processes 'hogging' cpu/mem/disk
+	- use rescale() in iostat derived metrics for disk.dev.*_bytes units
+	  differences across platforms
+	- further improvements to large indom handling performance
+	- conversion to asynchronous I/O for scalable time-series
+	- python PMDA API: python bindings for pmid_build() and indom_build()
+	- add checking of label names and values in libpcp_mmv
+	- improve libpcp_mmv memory allocation for labels, add QA
+    - Security Enhanced Linux:
+	- added several new rules and QA
+	- resolved AVCs in pmproxy and pmie
+	- updates for postgresql AVC denials
+    - Misc build, infrastructure and packaging updates:
+	- drop $pmda_interface on Install
+	- pmdaproc.sh: remove pmda_interface references throughout
+	- pmns/Rebuild: conditionally omit some root_foo PMNS files
+	- add an appropriate libuv version check to configure
+	- 'make check' support with cppcheck and pylint
+	- disable python2 for fedora30 onward
+	- fix warnings identified by coverity, and compilation warnings
+	- correct the SLURM package descriptions
+	- make perl-LDAP a soft dependency on some platforms
+	- spec file fixes for nfsclient and postgresql PMDAs
+	- install-sh fix for *BSD strangeness
+	- configure.ac checking for pcp2influxdb packaging
+	- do not attempt symlink creation on Windows
+	- windows: fix a pmcd crash, a client-side issue and update services
+	- scripts: create tmpfiles below PCP_DIR for windows
+	- docs: additional detail on Windows build instructions
+    - Web applications
+	- new versions of Vector and BlinkenLights webapps 
+
+pcp-4.1.2 (4 August 2018)
+    - Debian-specific-build release
 
 pcp-4.1.1 (3 August 2018)
     - Log rotation, management scripts, compression and server-side utilities:
@@ -46,7 +401,7 @@ pcp-4.1.1 (3 August 2018)
 	- libpcp: fork+exec and pipe+fork+exec changes for Windows
 	- libpcp_web: initial cluster support to Redis commands
 	- derived metrics: avoid divide by zero exceptions in iostat.conf
-    - SElinux:
+    - Security Enhanced Linux:
 	- selinux: add gpsd context rules allowing shm access via associate, getattr
 	- selinux: add init_t shm rule for accessing via unix_read
 	- selinux: policy improvements for the GFS2 PMDA
@@ -125,7 +480,7 @@ pcp-4.1.0 (15 June 2018)
 	- pmseries: properly implement the redisMap mapping type
 	- pmseries: initial support for cluster node map extraction
 	- pmseries: small cleanups on early cluster code review
-    - selinux:
+    - Security Enhanced Linux:
 	- selinux: update comments, additional script robustness changes
 	- selinux: abstract spec file bits into an installed script
     - PMDA additions, enhancements and bug fixes:
@@ -280,7 +635,7 @@ pcp-4.0.2 (11 May 2018)
     - pmwebd and pmmgr
 	- pmwebd: Restore logic for rolling over to a new volume.
 	- pmwebd: Handle compressed .meta and archive volume files.
-    - selinux
+    - Security Enhanced Linux:
 	- selinux: add fsetid cap to pcp_pmlogger_t
 	- pmda.smart/selinux: fix fsadm_exec_t rules
 	- selinux: pmlogger should be allowed the fowner cap for itself
@@ -374,7 +729,7 @@ pcp-4.0.1 (29 March 2018)
 	- pmwebd: support for etag headers
 	- pmwebd: improve graphite archive-cache performance w.r.t. syscalls
 	- build: house pmwebd in a subdir named consistently with rest of PCP
-    - selinux
+    - Security Enhanced Linux:
 	- selinux: add numad_t rules
 	- selinux: update for variety of avc denials
 	- selinux: fix avc denials uncovered from pmdabcc

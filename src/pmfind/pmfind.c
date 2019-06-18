@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016,2018 Red Hat.
+ * Copyright (c) 2013-2016,2018-2019 Red Hat.
  * 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -59,7 +59,7 @@ setupSignals(void)
 static const char *services[] = {
     PM_SERVER_SERVICE_SPEC,
     PM_SERVER_PROXY_SPEC,
-    PM_SERVER_WEBD_SPEC,
+    PM_SERVER_WEBAPI_SPEC,
 };
 
 static pmLongOptions longopts[] = {
@@ -67,7 +67,7 @@ static pmLongOptions longopts[] = {
     PMOPT_DEBUG,
     { "mechanism", 1, 'm', "NAME", "set the discovery method to use [avahi|shell|probe=<subnet>|all]" },
     { "resolve", 0, 'r', 0, "resolve addresses" },
-    { "service", 1, 's', "NAME", "discover services [pmcd|pmproxy|pmwebd|all]" },
+    { "service", 1, 's', "NAME", "discover services [pmcd|pmproxy|pmwebapi|all]" },
     { "timeout", 1, 't', "N.N", "timeout in seconds" },
     PMAPI_OPTIONS_HEADER("Reporting options"),
     { "quiet", 0, 'q', 0, "quiet mode, do not write to stdout" },
@@ -92,8 +92,9 @@ override(int opt, pmOptions *opts)
 static int
 addOption(const char *option, const char *arg)
 {
-    size_t existingLen, optionLen, argLen;
-    size_t commaLen, equalLen, allocLen;
+    size_t	existingLen, optionLen, argLen;
+    size_t	commaLen, equalLen, allocLen;
+    char	*opts;
 
     /* The existing length and space for a comma. */
     if (options == NULL) {
@@ -122,8 +123,9 @@ addOption(const char *option, const char *arg)
 
     /* Make room for the existing options plus the new option */
     allocLen = existingLen + commaLen + optionLen + equalLen + argLen;
-    if ((options = realloc(options, allocLen)) == NULL)
+    if ((opts = realloc(options, allocLen)) == NULL)
 	return -ENOMEM;
+    options = opts;
 
     /* Add the new option. */
     pmsprintf(options + existingLen, allocLen - existingLen, "%s%s%s%s",
@@ -191,6 +193,8 @@ main(int argc, char **argv)
 	case 's':	/* local services */
 	    if (strcmp(opts.optarg, "all") == 0)
 		service = NULL;
+	    else if (strcmp(opts.optarg, "pmwebd") == 0) /* back-compatible */
+		service = PM_SERVER_WEBAPI_SPEC;
 	    else
 		service = opts.optarg;
 	    break;

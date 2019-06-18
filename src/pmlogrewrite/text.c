@@ -26,12 +26,12 @@
  * Find or create a new textspec_t
  */
 textspec_t *
-start_text(int type, int id)
+start_text(int type, int id, char *text)
 {
     textspec_t	*tp;
     int		sts;
 
-    if (pmDebugOptions.appl0 && pmDebugOptions.appl1) {
+    if (pmDebugOptions.appl4) {
 	if ((type & PM_TEXT_PMID))
 	    fprintf(stderr, "start_text(%s)", pmIDStr(id));
 	else
@@ -46,17 +46,20 @@ start_text(int type, int id)
     for (tp = text_root; tp != NULL; tp = tp->t_next) {
 	if (type == tp->old_type) {
 	    if (id == tp->old_id) {
-		if (pmDebugOptions.appl0 && pmDebugOptions.appl1) {
-		    if ((type & PM_TEXT_PMID))
-			fprintf(stderr, " -> %s", pmIDStr(tp->new_id));
-		    else
-			fprintf(stderr, " -> %s", pmInDomStr(tp->new_id));
-		    if ((type & PM_TEXT_ONELINE))
-			fprintf(stderr, " one line\n");
-		    else
-			fprintf(stderr, " full\n");
+		if (text == NULL ||
+		    (tp->old_text != NULL && strcmp(text, tp->old_text) == 0)) {
+		    if (pmDebugOptions.appl4) {
+			if ((type & PM_TEXT_PMID))
+			    fprintf(stderr, " -> %s", pmIDStr(tp->new_id));
+			else
+			    fprintf(stderr, " -> %s", pmInDomStr(tp->new_id));
+			if ((type & PM_TEXT_ONELINE))
+			    fprintf(stderr, " one line\n");
+			else
+			    fprintf(stderr, " full\n");
+		    }
+		    return tp;
 		}
-		return tp;
 	    }
 	}
     }
@@ -68,7 +71,10 @@ start_text(int type, int id)
 	abandon();
 	/*NOTREACHED*/
     }
-    if ((type & PM_TEXT_PMID)) {
+
+    if (text != NULL)
+	tp->old_text = text;
+    else if ((type & PM_TEXT_PMID)) {
 	sts = pmLookupText(id, type, &tp->old_text);
 	if (sts < 0) {
 	    if (wflag) {
@@ -100,7 +106,7 @@ start_text(int type, int id)
     tp->flags = 0;
     tp->ip = NULL;
 
-    if (pmDebugOptions.appl0 && pmDebugOptions.appl1)
+    if (pmDebugOptions.appl4)
 	fprintf(stderr, " -> [new entry]\n");
 
     return tp;
@@ -169,6 +175,8 @@ do_text(void)
 	if (tp->old_id != ident)
 	    continue;
 	if (tp->old_type != type)
+	    continue;
+	if (tp->old_text != NULL && strcmp(tp->old_text, buffer) != 0)
 	    continue;
 
 	/* Delete the record? */

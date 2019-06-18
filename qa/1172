@@ -12,6 +12,7 @@ echo "QA output created by $seq"
 
 _pmdabcc_check
 _pmdabcc_require_kernel_version 4 7
+which ausyscall >/dev/null 2>&1 || _notrun "No ausyscall binary found"
 
 status=1       # failure is the default!
 signal=$PCP_BINADM_DIR/pmsignal
@@ -23,6 +24,7 @@ _stop_auto_restart pmcd
 
 # real QA test starts here
 cat <<EOF | _pmdabcc_install
+# Installed by PCP QA test $seq on `date`
 [pmda]
 modules = syscount
 prefix = bcc.

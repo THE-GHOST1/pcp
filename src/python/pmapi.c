@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Red Hat.
+ * Copyright (C) 2012-2019 Red Hat.
  * Copyright (C) 2009-2012 Michael T. Werner
  *
  * This file is part of the "pcp" module, the python interfaces for the
@@ -843,9 +843,9 @@ getOptionsFromList(PyObject *self, PyObject *args, PyObject *keywords)
     for (i = 0; i < argCount; i++) {
 	PyObject *pyarg = PyList_GET_ITEM(pyargv, i);
 #if PY_MAJOR_VERSION >= 3
-	char *string = PyUnicode_AsUTF8(pyarg);
+	char *string = (char *)PyUnicode_AsUTF8(pyarg);
 #else
-	char *string = PyString_AsString(pyarg);
+	char *string = (char *)PyString_AsString(pyarg);
 #endif
 
 	/* All parameters may be referred back to later, e.g. via
@@ -1576,6 +1576,8 @@ MOD_INIT(cpmapi)
     dict_add(dict, "PM_MODE_FORW",   PM_MODE_FORW);
     dict_add(dict, "PM_MODE_BACK",   PM_MODE_BACK);
 
+    dict_add(dict, "PM_TEXT_PMID",    PM_TEXT_PMID);
+    dict_add(dict, "PM_TEXT_INDOM",   PM_TEXT_INDOM);
     dict_add(dict, "PM_TEXT_ONELINE", PM_TEXT_ONELINE);
     dict_add(dict, "PM_TEXT_HELP",    PM_TEXT_HELP);
 
@@ -1673,9 +1675,10 @@ MOD_INIT(cpmapi)
     edict_add(dict, edict, "PM_ERR_LOGCHANGEINDOM", PM_ERR_LOGCHANGEINDOM);
     edict_add(dict, edict, "PM_ERR_LOGCHANGEUNITS", PM_ERR_LOGCHANGEUNITS);
     edict_add(dict, edict, "PM_ERR_NEEDCLIENTCERT", PM_ERR_NEEDCLIENTCERT);
+    edict_add(dict, edict, "PM_ERR_BADDERIVE", PM_ERR_BADDERIVE);
     edict_add(dict, edict, "PM_ERR_NOLABELS", PM_ERR_NOLABELS);
+    edict_add(dict, edict, "PM_ERR_PMDAFENCED", PM_ERR_PMDAFENCED);
     edict_add(dict, edict, "PM_ERR_NYI", PM_ERR_NYI);
-    edict_add(dict, edict, "PM_ERR_NOLABELS", PM_ERR_NOLABELS);
 
     return MOD_SUCCESS_VAL(module);
 }

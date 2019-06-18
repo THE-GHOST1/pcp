@@ -1,7 +1,7 @@
 /*
  * JSON web bridge for PMAPI.
  *
- * Copyright (c) 2011-2017 Red Hat.
+ * Copyright (c) 2011-2018 Red Hat.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,6 +16,8 @@
 
 #define _XOPEN_SOURCE 600
 #include "pmwebapi.h"
+#define PMWEBD_PORT WEBAPI_PORT
+#define PM_SERVER_WEBD_SPEC "pmwebd"
 
 #include <string>
 #include <iostream>
@@ -42,7 +44,6 @@ unsigned multithread = 0;       /* set by -M option */
 unsigned graphite_timestep = 60;  /* set by -i option */
 unsigned graphite_hostcache = 0; /* set by -J option */
 string logfile = "";		/* set by -l option */
-string fatalfile = "/dev/tty";	/* fatal messages at startup go here */
 
 
 
@@ -109,6 +110,9 @@ mhd_get_iterator (void *cls, enum MHD_ValueKind kind, const char *key, const cha
     (void) kind;
     http_params *c = (http_params *) cls;
     assert (c);
+    if (verbosity > 2) {
+	cerr << "Debug: mhd_get_iterator: kind=" << kind << " key=" << key << " value=\"" << value << "\"" << endl;
+    }
     c->insert (make_pair (string (key), string (value ? value : "")));
     return MHD_YES;
 }
@@ -224,9 +228,10 @@ mhd_respond (void *cls, struct MHD_Connection *connection, const char *url0,
             stringstream str;
             str << version << " " << method << " " << url;
             if (verbosity > 1) {
+		int	i = 0;
                 for (http_params::iterator it = mhd_cc->params.begin (); it != mhd_cc->params.end ();
-                        it++) {
-                    str << " " << it->first << "=" << it->second;
+                        it++, i++) {
+                    str << " [" << i << "]" << it->first << "=" << it->second;
                 }
             }
             connstamp (clog, connection) << str.str () << endl;
@@ -311,22 +316,6 @@ static void
 pmweb_dont_start (void)
 {
     timestamp (cerr) << "pmwebd not started due to errors!" << endl;
-
-    ofstream tty (fatalfile.c_str ());
-    if (tty.good ()) {
-        timestamp (tty) << "NOTE: pmwebd not started due to errors!" << endl;
-
-        // copy logfile to tty, if it was specified
-        if (logfile != "") {
-            tty << "Log file \"" << logfile << "\" contains ..." << endl;
-            ifstream log (logfile.c_str ());
-            if (log.good ()) {
-                tty << log.rdbuf ();
-            } else {
-                tty << "Log file \"" << logfile << "\" has vanished ..." << endl;
-            }
-        }
-    }
     exit (1);
 }
 
@@ -510,7 +499,6 @@ longopts[] = {
 #endif
     {"dumpstats", 1, 'd', 0, "dump client stats roughly every N seconds [default 300]"},
     {"username", 1, 'U', "USER", "decrease privilege from root to user [default pcp]"},
-    {"", 1, 'x', "PATH", "fatal messages at startup sent to file [default /dev/tty]"},
     PMOPT_HELP,
     PMAPI_OPTIONS_END
 };
@@ -700,7 +688,7 @@ main (int argc, char *argv[])
             break;
 
         case 'x':
-            fatalfile = opts.optarg;
+            /* ignore obsolete option */
             break;
         }
     }

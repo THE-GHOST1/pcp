@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 Red Hat.
+ * Copyright (c) 2013-2019 Red Hat.
  * 
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
@@ -11,8 +11,6 @@
  * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
  * License for more details.
  */
-
-#include <sys/stat.h> 
 
 #include "pmapi.h"
 #include "libpcp.h"
@@ -82,8 +80,8 @@ __pmServiceAddPorts(const char *service, int **ports, int nports)
 	nports = __pmPMCDAddPorts(ports, nports);
     else if (strcmp(service, PM_SERVER_PROXY_SPEC) == 0)
 	nports = __pmProxyAddPorts(ports, nports);
-    else if (strcmp(service, PM_SERVER_WEBD_SPEC) == 0)
-	nports = __pmWebdAddPorts(ports, nports);
+    else if (strcmp(service, PM_SERVER_WEBAPI_SPEC) == 0)
+	nports = __pmWebAPIAddPorts(ports, nports);
     else
 	nports = -EOPNOTSUPP;
 
@@ -159,7 +157,7 @@ __pmProxyAddPorts(int **ports, int nports)
 }
 
 int
-__pmWebdAddPorts(int **ports, int nports)
+__pmWebAPIAddPorts(int **ports, int nports)
 {
     /*
      * The list of ports referenced by *ports may be (re)allocated
@@ -174,12 +172,13 @@ __pmWebdAddPorts(int **ports, int nports)
     int  new_nports = nports;
 
     PM_LOCK(__pmLock_extcall);
-    if ((env = getenv("PMWEBD_PORT")) != NULL)		/* THREADSAFE */
+    if ((env = getenv("PMWEBAPI_PORT")) != NULL ||	/* THREADSAFE */
+	(env = getenv("PMWEBD_PORT")) != NULL)		/* back-compat */
 	/*
 	 * THREADSAFE because __pmAddPorts acquires no locks (other than
 	 * on the fatal pmNoMem() path)
 	 */
-	new_nports = __pmAddPorts(env, ports, nports);		/* THREADSAFE */
+	new_nports = __pmAddPorts(env, ports, nports);	/* THREADSAFE */
     PM_UNLOCK(__pmLock_extcall);
 
     /*
@@ -187,7 +186,7 @@ __pmWebdAddPorts(int **ports, int nports)
      * error.
      */
     if (new_nports <= nports)
-	new_nports = __pmAddPorts(TO_STRING(PMWEBD_PORT), ports, nports);
+	new_nports = __pmAddPorts(TO_STRING(PMWEBAPI_PORT), ports, nports);
 
     return new_nports;
 }
@@ -367,8 +366,8 @@ AddRequestPort(const char *address, int port)
     return nReqPorts;   /* success */
 }
 
-static int
-SetupRequestPorts(void)
+int
+__pmServerSetupRequestPorts(void)
 {
     int	i, n;
 
@@ -402,7 +401,7 @@ SetupRequestPorts(void)
 	    }
 	}
     }
-    return 0;
+    return nport;
 }
 
 static const char *
@@ -548,7 +547,7 @@ OpenRequestSocket(int port, const char *address, int *family,
     }
 
     /*
-     * Attempts to make daemon restart (especailly pmcd) have increased
+     * Attempts to make daemon restart (especially pmcd) have increased
      * the probability of trying to reuse a socket before the last use
      * has been completely torn down ... so be prepared to try this a
      * few times (4 x 250msec)
@@ -711,11 +710,21 @@ OpenRequestPorts(__pmFdSet *fdset, int backlog)
 }
 
 int
+__pmServerGetRequestPort(int index, const char **address, int *port)
+{
+    if (index < 0 || index >= nReqPorts)
+	return -EINVAL;
+    *address = reqPorts[index].address;
+    *port = reqPorts[index].port;
+    return 0;
+}
+
+int
 __pmServerOpenRequestPorts(__pmFdSet *fdset, int backlog)
 {
     int sts;
 
-    if ((sts = SetupRequestPorts()) < 0)
+    if ((sts = __pmServerSetupRequestPorts()) < 0)
 	return sts;
     return OpenRequestPorts(fdset, backlog);
 }
@@ -860,7 +869,7 @@ __pmServerDumpRequestPorts(FILE *stream)
 	  "  === ==== ===== ====== =======\n", pmGetProgname());
 
     if (localSocketFd != -EPROTO)
-	fprintf(stderr, "  %-3s %4d %5s %-6s %s\n",
+	fprintf(stream, "  %-3s %4d %5s %-6s %s\n",
 		(localSocketFd != -1) ? "ok" : "err",
 		localSocketFd, "", "unix",
 		localSocketPath);
@@ -869,7 +878,7 @@ __pmServerDumpRequestPorts(FILE *stream)
 	ReqPortInfo *rp = &reqPorts[i];
 	for (j = 0; j < FAMILIES; j++) {
 	    if (rp->fds[j] != -EPROTO)
-		fprintf(stderr, "  %-3s %4d %5d %-6s %s\n",
+		fprintf(stream, "  %-3s %4d %5d %-6s %s\n",
 		    (rp->fds[j] != -1) ? "ok" : "err",
 		    rp->fds[j], rp->port, RequestFamilyString(j),
 		    rp->address ? rp->address : "(any address)");

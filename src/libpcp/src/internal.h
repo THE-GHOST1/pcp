@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 Red Hat.
+ * Copyright (c) 2012-2019 Red Hat.
  * Copyright (c) 1995-2001 Silicon Graphics, Inc.  All Rights Reserved.
  * 
  * This library is free software; you can redistribute it and/or modify it
@@ -163,6 +163,12 @@ extern int __pmIsConnectLock(void *) _PCP_HIDDEN;
 extern int __pmIsExecLock(void *) _PCP_HIDDEN;
 #endif
 
+/*
+ * Generic have / do not have lock macros
+ */
+#define PM_LOCKED	1
+#define PM_NOT_LOCKED	0
+
 #if !defined(PTHREAD_STACK_MIN)
 #if defined(IS_SOLARIS)
 #define PTHREAD_STACK_MIN       ((size_t)_sysconf(_SC_THREAD_STACK_MIN))
@@ -192,6 +198,9 @@ extern void __pmCheckAcceptedAddress(__pmSockAddr *) _PCP_HIDDEN;
 /* internal NSS/NSPR/SSL/SASL implementation details */
 extern int __pmSecureSocketsError(int) _PCP_HIDDEN;
 #endif
+
+#define PM_FDSET_SIZE \
+	(sizeof(__pmFdSet) > FD_SETSIZE ? sizeof(__pmFdSet) : FD_SETSIZE)
 
 #if defined(HAVE_SYS_UN_H)
 #include <sys/un.h>
@@ -308,17 +317,18 @@ extern char *__pmServiceDiscoveryParseTimeout(const char *s,
 extern int __pmServiceAddPorts(const char *, int **, int) _PCP_HIDDEN;
 extern int __pmPMCDAddPorts(int **, int) _PCP_HIDDEN;
 extern int __pmProxyAddPorts(int **, int) _PCP_HIDDEN;
-extern int __pmWebdAddPorts(int **, int) _PCP_HIDDEN;
+extern int __pmWebAPIAddPorts(int **, int) _PCP_HIDDEN;
 extern int __pmAddPorts(const char *, int **, int) _PCP_HIDDEN;
 
 /*
  * Internal variants for with extra __pmContext parameter to allow
  * for context being locked or not locked
  */
-extern int pmLookupName_ctx(__pmContext *, int, char **, pmID *) _PCP_HIDDEN;
+extern int pmLookupName_ctx(__pmContext *, int, int, char **, pmID *) _PCP_HIDDEN;
 extern int pmNameAll_ctx(__pmContext *, pmID, char ***) _PCP_HIDDEN;
-extern int pmLookupDesc_ctx(__pmContext *, pmID, pmDesc *) _PCP_HIDDEN;
+extern int pmLookupDesc_ctx(__pmContext *, int, pmID, pmDesc *) _PCP_HIDDEN;
 extern int pmNameInDom_ctx(__pmContext *, pmInDom, int, char **) _PCP_HIDDEN;
+extern int pmLookupInDom_ctx(__pmContext *, pmInDom, const char *) _PCP_HIDDEN;
 extern int pmGetInDomArchive_ctx(__pmContext *, pmInDom, int **, char ***) _PCP_HIDDEN;
 extern int pmFetch_ctx(__pmContext *, int, pmID *, pmResult **) _PCP_HIDDEN;
 extern int pmStore_ctx(__pmContext *, const pmResult *) _PCP_HIDDEN;

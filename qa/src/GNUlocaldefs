@@ -34,7 +34,7 @@ CFILES = disk_test.c exercise.c context_test.c chkoptfetch.c \
 	matchInstanceName.c torture_pmns.c \
 	mmv_genstats.c mmv_instances.c mmv_poke.c mmv_noinit.c mmv_nostats.c \
 	mmv2_genstats.c mmv2_instances.c mmv2_nostats.c mmv2_simple.c \
-	mmv3_simple.c mmv3_labels.c \
+	mmv3_simple.c mmv3_labels.c mmv3_bad_labels.c mmv3_nostats.c mmv3_genstats.c \
 	record.c record-setarg.c clientid.c grind_ctx.c \
 	pmdacache.c check_import.c unpack.c hrunpack.c aggrstore.c atomstr.c \
 	semstr.c grind_conv.c getconfig.c err.c torture_logmeta.c keycache.c \
@@ -48,11 +48,8 @@ CFILES = disk_test.c exercise.c context_test.c chkoptfetch.c \
 	archctl_segfault.c debug.c int2pmid.c int2indom.c exectest.c \
 	unpickargs.c hanoi.c progname.c countmark.c \
 	indom2int.c pmid2int.c scanmeta.c traverse_return_codes.c \
-	timeshift.c checkstructs.c bcc_profile.c
-
-#ifeq "$(HAVE_LIBUV)" "true"
-#CFILES += discover-logtail.c
-#endif
+	timeshift.c checkstructs.c bcc_profile.c sha1int2ext.c \
+	getdomainname.c
 
 ifeq ($(shell test -f ../localconfig && echo 1), 1)
 include ../localconfig
@@ -148,7 +145,8 @@ PYTHONFILES = \
 	test_set_source.python test_pmda_memleak.python \
 	test_webcontainers.python test_webprocesses.python \
 	test_pmfg.python \
-	mergelabels.python mergelabelsets.python
+	mergelabels.python mergelabelsets.python \
+	bcc_version_check.python sort_xml.python
 # not installed:
 PYFILES = $(shell echo $(PYTHONFILES) | sed -e 's/\.python/.py/g')
 LDIRT += $(PYFILES)
@@ -172,7 +170,7 @@ MYFILES += \
 	qa_shmctl_stat.c qa_msgctl_stat.c qa_semctl_stat.c \
 	qa_libpcp_compat.c
 
-MYSCRIPTS = grind-tools ipcs_clear show-args fixhosts mkpermslist \
+MYSCRIPTS = grind-tools show-args fixhosts mkpermslist \
 	memcachestats.pl
 
 PSCRIPTS = $(PERLFILES) $(PYTHONFILES)
@@ -180,7 +178,7 @@ PSCRIPTS = $(PERLFILES) $(PYTHONFILES)
 CFILES_TARGETS = $(CFILES)
 
 TARGETS = $(subst broken_pmda,,$(basename $(patsubst %.c,%,$(CFILES_TARGETS)))) \
-	chkctx2_lite$ template \
+	chkctx2_lite template \
 	fetchrate_lite pv
 
 ifeq "$(TARGET_OS)" "linux"
@@ -222,8 +220,7 @@ LDIRT	+= *.log domain.h help.pag help.dir \
 default default_pcp: \
 	$(CFILES_TARGETS) $(TARGETS) \
 	$(SRCARCHPART) \
-	$(PLFILES) $(PYFILES) \
-	ipcs_clear
+	$(PLFILES) $(PYFILES)
 
 setup: default $(XTRATARGETS)
 
@@ -316,7 +313,7 @@ template:	template.c
 
 exercise:	exercise.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ exercise.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ exercise.c $(LDLIBS)
 
 chkacc1:	chkacc1.c
 	rm -f $@
@@ -332,7 +329,7 @@ chkacc3:	chkacc3.c
 
 ipc:	ipc.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ ipc.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ ipc.c $(LDLIBS)
 
 chk_memleak:	chk_memleak.c
 	rm -f $@
@@ -340,11 +337,11 @@ chk_memleak:	chk_memleak.c
 
 chknumval:	chknumval.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ chknumval.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ chknumval.c $(LDLIBS)
 
 logcontrol:	logcontrol.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ logcontrol.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ logcontrol.c $(LDLIBS)
 
 numberstr: numberstr.c
 	rm -f $@
@@ -352,11 +349,11 @@ numberstr: numberstr.c
 
 pmcdgone:	pmcdgone.c localconfig.h
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ pmcdgone.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ pmcdgone.c $(LDLIBS)
 
 slow_af:	slow_af.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ slow_af.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ slow_af.c $(LDLIBS)
 
 mmv_poke:	mmv_poke.c
 	rm -f $@
@@ -364,19 +361,23 @@ mmv_poke:	mmv_poke.c
 
 labels:	labels.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ labels.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ labels.c $(LDLIBS)
 
 mergelabels:	mergelabels.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ mergelabels.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ mergelabels.c $(LDLIBS)
 
 mergelabelsets:	mergelabelsets.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ mergelabelsets.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ mergelabelsets.c $(LDLIBS)
 
 traverse_return_codes:	traverse_return_codes.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ traverse_return_codes.c  $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ traverse_return_codes.c $(LDLIBS)
+
+getdomainname:	getdomainname.c
+	rm -f $@
+	$(CCF) $(CDEFS) -o $@ getdomainname.c $(LDLIBS)
 
 
 # --- need libpcp but also PM_CONTEXT_LOCAL
@@ -477,15 +478,15 @@ mmv%:	mmv%.o
 #
 pducheck:	pducheck.o 
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ pducheck.o  $(TRACELIB) $(LDLIBS) -lpcp_pmda
+	$(CCF) $(CDEFS) -o $@ pducheck.o $(TRACELIB) $(LDLIBS) -lpcp_pmda
 
 pducrash:	pducrash.o 
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ pducrash.o  $(TRACELIB) $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ pducrash.o $(TRACELIB) $(LDLIBS)
 
 pdu-server:	pdu-server.o
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ pdu-server.o  $(TRACELIB) $(LDLIBS)
+	$(CCF) $(CDEFS) -o $@ pdu-server.o $(TRACELIB) $(LDLIBS)
 
 obs:	obs.c
 	rm -f $@
@@ -527,19 +528,13 @@ check_pmiend_fdleak:	check_pmiend_fdleak.c
 
 httpfetch:	httpfetch.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ $@.c $(LDLIBS) -lpcp_pmda -lpcp_web
+	$(CCF) $(CDEFS) -o $@ $@.c $(LDLIBS) -lpcp_pmda -lpcp_web $(LIB_FOR_LIBUV)
 json_test:	json_test.c
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ $@.c $(LDLIBS) -lpcp_pmda -lpcp_web
-
-# --- need libpcp_web and libuv
-#
-
-ifeq "$(HAVE_LIBUV)" "true"
-discover-logtail:	discover-logtail.c
+	$(CCF) $(CDEFS) -o $@ $@.c $(LDLIBS) -lpcp_pmda -lpcp_web $(LIB_FOR_LIBUV)
+sha1int2ext:	sha1int2ext.o
 	rm -f $@
-	$(CCF) $(CDEFS) -o $@ $@.c -I$(TOPDIR)/src/libpcp_web/src -DHAVE_LIBUV=1 $(LDLIBS) -lpcp_web -luv
-endif # HAVE_LIBUV
+	$(CCF) $(CDEFS) -o $@ $@.c $(LDLIBS) -lpcp_pmda -lpcp_web $(LIB_FOR_LIBUV)
 
 # --- need libpcp_fault
 #

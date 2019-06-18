@@ -66,6 +66,20 @@ s/ i:[0-9] / i:? /
 s/lib=[^ ]*/lib=[OS]pmda.$DSO_SUFFIX/
 s/entry=[^ ]*/entry=[OS]_init/
 }' \
+	-e '/^netbsd.*pmda_netbsd/{
+s/netbsd/[OS]  /
+s/116/ ??/
+s/ i:[0-9] / i:? /
+s/lib=[^ ]*/lib=[OS]pmda.$DSO_SUFFIX/
+s/entry=[^ ]*/entry=[OS]_init/
+}' \
+	-e '/^openbsd.*pmda_openbsd/{
+s/openbsd/[OS]   /
+s/139/ ??/
+s/ i:[0-9] / i:? /
+s/lib=[^ ]*/lib=[OS]pmda.$DSO_SUFFIX/
+s/entry=[^ ]*/entry=[OS]_init/
+}' \
 	-e '/^solaris.*pmda_solaris/{
 s/solaris/[OS]   /
 s/75/??/
@@ -124,6 +138,28 @@ state == 2		{ print base,$0; next }
 state == 1 && /^=====/	{ state = 2; base = NR+1 }' \
     | LC_COLLATE=POSIX _POSIX2_VERSION=0 sort +0n -1 +2n -3 \
     | sed -e 's/^[^ ]* //'
+}
+
+# pmproxy log file
+#
+_filter_pmproxy_log()
+{
+    $PCP_AWK_PROG '
+/ok .* INADDR_ANY/			{ $2 = "FD" }
+/ok .*pmproxy.socket$/			{ $2 = "FD"; $4 = "UNIX_DOMAIN_SOCKET" }
+					{ print }' \
+    | sed \
+	-e 's/[A-Z][a-z][a-z] [A-Z][a-z][a-z]  *[0-9][0-9]* [0-9][0-9]:[0-9][0-9]:[0-9][0-9] [0-9][0-9][0-9][0-9]$/DATE/' \
+	-e 's/[A-Z][a-z][a-z] [A-Z][a-z][a-z]  *[0-9][0-9]* [0-9][0-9]:[0-9][0-9]:[0-9][0-9]/DATE/' \
+	-e '/pmproxy([0-9][0-9]*)/s//pmproxy(PID)/' \
+        -e '/^\(Log for pmproxy on\) [^ ][^ ]*/s//\1 HOST/' \
+	-e '/^pmproxy: PID/s/=.*/= PID/' \
+	-e 's/pmproxy([1-9][0-9]*) Error:/pmproxy(PID) Error:/' \
+	-e '/^pmproxy: Signalled (signal=[1-9][0-9]*).*/d' \
+	-e '/Info: connected to .*redis.*/d' \
+	-e '/Info: OpenSSL .*/d' \
+	-e '/Info: .* setup$/d' \
+    #end
 }
 
 # pmlogger log file
@@ -261,10 +297,10 @@ _filter_optional_pmdas()
 	-e '/pmdanvidia/d' \
 	-e '/pmdaperfevent/d' \
 	-e '/pmdapipe/d' \
+	-e '/pmdapodman/d' \
 	-e '/pmdaprometheus/d' \
 	-e '/pmdaoracle/d' \
 	-e '/pmdaoraping/d' \
-	-e '/pmdapapi/d' \
 	-e '/pmdapdns/d' \
 	-e '/pmdapmcd/d' \
 	-e '/pmdaproc/d' \
@@ -364,10 +400,11 @@ _filter_top_pmns()
 	-e '/^    nvidia /d' \
 	-e '/^    oracle /d' \
 	-e '/^    oraping /d' \
-	-e '/^    papi /d' \
 	-e '/^    pdns /d' \
 	-e '/^    perfevent /d' \
 	-e '/^    pipe /d' \
+	-e '/^    pmproxy /d' \
+	-e '/^    podman /d' \
 	-e '/^    postfix /d' \
 	-e '/^    postgresql /d' \
 	-e '/^    proc /d' \
@@ -444,6 +481,11 @@ _filter_cron_scripts()
 	-e 's/cron\.pmsnap/pmsnap/g'
 }
 
+# besides rewriting platform-specific paths, we need to ensure that
+# any chatter from the pcp/pmcd/pmlogger start scripts is removed ...
+# this may come from the PCP scripts or the infrastructure that runs
+# them, e.g. systemctl
+#
 _filter_pcp_start()
 {
     sed \
@@ -474,30 +516,26 @@ s/\.\.\.[. ]*failed/.../
 s/Performance Co-Pilot starting PMCD (logfile is [^)]*) .../Starting pmcd ... /
 s/Performance Co-Pilot starting archive loggers .../Starting pmlogger ... /
 }' \
-	-e '/^Starting pmcd/{
-s/\.\.\. \.\.done/... /
-}' \
-	-e '/^Starting pmlogger/{
-s/\.\.\. \.\.done/... /
-}' \
+	-e '/^Starting pmcd/d' \
+	-e '/^pmcd\.service: Succeeded/d' \
+	-e '/^Rebuilding PMNS /d' \
+	-e '/^Starting pmlogger/d' \
+	-e '/^Waiting for PMCD/d' \
+	-e '/^Waiting for pmcd/d' \
 	-e '/^Performance Co-Pilot installing/s//Installing/' \
+	-e '/Installing .* PMDA/d' \
+	-e '/Removing .* PMDA/d' \
         -e '/^\.[. ]*done$/d' \
         -e '/^\.[. ]*failed$/d' \
-	-e '/^Waiting for PMCD/{
-s/PMCD/pmcd/
-s/\.\.\.[. ]*done/.../
-s/\.\.\.\.*/.../
-}' \
-	-e '/^Waiting for pmcd/{
-s/\.\.\.[. ]*done/.../
-s/\.\.\.\.*/.../
-}' \
 	-e 's/^\(Waiting .*\.\.\.\)\(\$PCP_RC_DIR\)/\1\
 \2/' \
 	-e '/^[ 	]*$/d' \
 	-e '/is not a native service, redirecting to .*chkconfig/d' \
 	-e '/^Executing .*chkconfig pm.* --level=5/d' \
-	-e '/Failed to create avahi client: Daemon not running/s/\[.*] .* running//' \
+	-e '/\[.*] pmcd(.*) Error: Failed to create avahi client: Daemon not running/{
+s///
+/^$/d
+}' \
     | _filter_init_distro
 }
 
@@ -505,19 +543,12 @@ _filter_pcp_stop()
 {
     sed \
 	-e '/^Stopping pmlogger/d' \
+	-e '/^Waiting for PMCD/s/PMCD/pmcd/' \
+	-e '/^Waiting for pmcd/d' \
+	-e '/^pmcd\.service: Succeeded/d' \
 	-e '/^Waiting for PMIE/s/PMIE/pmie/' \
-	-e '/^Waiting for pmie/s/\.\.\.[. ]*done/.../' \
-	-e '/^Waiting for PMCD/{
-s/\.\.\.[. ]*done/.../
-s/PMCD/pmcd/
-s/\.\.\.\.*/.../
-}' \
-	-e '/^Waiting for pmcd/{
-s/\.\.\.[. ]*done/.../
-s/\.\.\.\.*/.../
-}' \
+	-e '/^Waiting for pmie/d' \
 	-e '/Warning: Forcing PMCD to terminate!/s/PMCD/pmcd/' \
-	-e '/^Waiting for pmie/s/\.\.\. *$/.../' \
 	-e '/^Performance Co-Pilot/s/\.\.\. *$/.../' \
         -e '/^\.[. ]*done$/d' \
 	-e '/is not a native service, redirecting to .*chkconfig/d' \
@@ -538,10 +569,13 @@ _filterall_pcp_start()
 _filter_pmie_start()
 {
     sed \
-	-e '/^Waiting for PMIE/s/PMIE/pmie/' \
-	-e '/^Waiting for pmie process(es) to terminate/d' \
+	-e 's/PMIE/pmie/g' \
+	-e '/^Stopping pmie/d' \
+	-e '/^Starting pmie/d' \
+	-e '/^Waiting for pmie/d' \
 	-e "s;$PCP_RC_DIR/pmie;\$PCP_RC_DIR/pmie;g" \
 	-e '/(pmie) is disabled/d' \
+	-e '/(pmie) not permanently enabled/d' \
 	-e '/To enable/d' \
 	-e '/update-rc.d -f pmie remove/d' \
 	-e '/update-rc.d pmie defaults/d' \
@@ -570,7 +604,9 @@ _filter_pmie_stop()
 _filter_pmproxy_start()
 {
     sed \
-	-e '/^Waiting for pmproxy to terminate/d' \
+	-e '/^Stopping pmproxy/d' \
+	-e '/^Starting pmproxy/d' \
+	-e '/^Waiting for pmproxy/d' \
 	-e "s;$PCP_RC_DIR/pmproxy;\$PCP_RC_DIR/pmproxy;g" \
 	-e '/(pmproxy) is disabled/d' \
 	-e '/To enable/d' \
@@ -591,8 +627,25 @@ _filter_pmproxy_stop()
 {
     sed \
 	-e "s;$PCP_RC_DIR/pmproxy;\$PCP_RC_DIR/pmproxy;g" \
-	-e '/^Waiting for pmproxy/s/\.\.\.[. ]*done/.../' \
-	-e '/^Waiting for pmproxy/s/\.\.\. *$/.../' \
+	-e '/^Waiting for pmproxy/d' \
+    | _filter_init_distro
+}
+
+_filter_pmwebd_start()
+{
+    sed \
+	-e '/^Stopping pmwebd/d' \
+	-e '/^Starting pmwebd/d' \
+	-e '/^Waiting for pmwebd/d' \
+	-e "s;$PCP_RC_DIR/pmwebd;\$PCP_RC_DIR/pmwebd;g" \
+    | _filter_init_distro
+}
+
+_filter_pmwebd_stop()
+{
+    sed \
+	-e '/^Waiting for pmwebd/d' \
+	-e "s;$PCP_RC_DIR/pmwebd;\$PCP_RC_DIR/pmwebd;g" \
     | _filter_init_distro
 }
 
@@ -622,11 +675,14 @@ _filter_pmda_install()
 	-e '/Terminate PMDA/,/Updating the PMCD/c\
 Terminate PMDA if already installed ...\
 [...install files, make output...]\
-Updating the PMCD control file, and notifying PMCD ...' \
+Updating the PMCD control file, and notifying PMCD ...
+' \
 	-e '/Installing files/,/Updating the Performance Metrics/c\
 Installing files ...\
 [...install files, make output...]\
-Updating the Performance Metrics Name Space (PMNS) ...'
+Updating the Performance Metrics Name Space (PMNS) ...
+' \
+    | _filter_pcp_start
 }
 
 _filter_pmda_remove()

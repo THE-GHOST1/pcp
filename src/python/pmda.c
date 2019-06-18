@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015,2017-2018 Red Hat.
+ * Copyright (C) 2013-2015,2017-2019 Red Hat.
  *
  * This file is part of the "pcp" module, the python interfaces for the
  * Performance Co-Pilot toolkit.
@@ -566,7 +566,7 @@ fetch_callback(pmdaMetric *metric, unsigned int inst, pmAtomValue *atom)
     Py_DECREF(arglist);
     if (result == NULL)
 	return callback_error("fetch_callback");
-    else if (PyTuple_Check(result)) {
+    else if (result == Py_None || PyTuple_Check(result)) {
 	/* non-tuple returned from fetch callback, e.g. None - no values */
 	Py_DECREF(result);
 	return PMDA_FETCH_NOVALUES;
@@ -799,9 +799,9 @@ text(int ident, int type, char **buffer, pmdaExt *pmda)
     if (value == NULL)
 	return PM_ERR_TEXT;
 #if PY_MAJOR_VERSION >= 3
-    *buffer = PyUnicode_AsUTF8(value);
+    *buffer = (char *)PyUnicode_AsUTF8(value);
 #else
-    *buffer = PyString_AsString(value);
+    *buffer = (char *)PyString_AsString(value);
 #endif
     /* "value" is a borrowed reference, do not decrement */
     return 0;
@@ -963,6 +963,7 @@ update_indom_metric_buffers(void)
     /* Copy the indoms. */
     for (i = 0; !error && i < nindoms; i++) {
 	item = PyList_GetItem(indom_list, i);
+#if defined(ENABLE_PYTHON3)
 	/* Newer buffer interface */
 	if (item && PyObject_CheckBuffer(item)) {
 	    /* Attempt to extract buffer information from it. */
@@ -975,8 +976,9 @@ update_indom_metric_buffers(void)
 	    ptr = buffer.buf;
 	    len = buffer.len;
 	}
+#else
 	/* Older buffer interface */
-	else if (item && PyObject_CheckReadBuffer(item)) {
+	if (item && PyObject_CheckReadBuffer(item)) {
 	    /* Attempt to extract information from the item. */
 	    if (PyObject_AsReadBuffer(item, &ptr, &len) == -1) {
 		PyErr_SetString(PyExc_TypeError,
@@ -986,6 +988,7 @@ update_indom_metric_buffers(void)
 	    }
 	    buffer.buf = NULL;
 	}
+#endif
 	else {
  	    PyErr_SetString(PyExc_TypeError, "Unable to retrieve indom");
 	    error = 1;
@@ -1011,6 +1014,7 @@ update_indom_metric_buffers(void)
     /* Copy the metrics. */
     for (i = 0; !error && i < nmetrics; i++) {
 	item = PyList_GetItem(metric_list, i);
+#if defined(ENABLE_PYTHON3)
 	/* Newer buffer interface */
 	if (item && PyObject_CheckBuffer(item)) {
 	    /* Attempt to extract buffer information from it. */
@@ -1024,8 +1028,9 @@ update_indom_metric_buffers(void)
 	    ptr = buffer.buf;
 	    len = buffer.len;
 	}
+#else
 	/* Older buffer interface */
-	else if (item && PyObject_CheckReadBuffer(item)) {
+	if (item && PyObject_CheckReadBuffer(item)) {
 	    /* Attempt to extract information from the item. */
 	    if (PyObject_AsReadBuffer(item, &ptr, &len) == -1) {
 		PyErr_SetString(PyExc_TypeError,
@@ -1035,6 +1040,7 @@ update_indom_metric_buffers(void)
 	    }
 	    buffer.buf = NULL;
 	}
+#endif
 	else {
 	    PyErr_SetString(PyExc_TypeError, "Unable to retrieve metric");
 	    error = 1;
@@ -1234,6 +1240,21 @@ pmda_pmid(PyObject *self, PyObject *args, PyObject *keywords)
 }
 
 static PyObject *
+pmid_build(PyObject *self, PyObject *args, PyObject *keywords)
+{
+    int result;
+    int domain, cluster, item;
+    char *keyword_list[] = {"domain", "cluster", "item", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, keywords,
+			"iii:pmid_build", keyword_list,
+			&domain, &cluster, &item))
+	return NULL;
+    result = pmID_build(domain, cluster, item);
+    return Py_BuildValue("i", result);
+}
+
+static PyObject *
 pmda_indom(PyObject *self, PyObject *args, PyObject *keywords)
 {
     int result;
@@ -1244,6 +1265,21 @@ pmda_indom(PyObject *self, PyObject *args, PyObject *keywords)
 			"i:pmda_indom", keyword_list, &serial))
 	return NULL;
     result = pmInDom_build(dispatch.domain, serial);
+    return Py_BuildValue("i", result);
+}
+
+static PyObject *
+indom_build(PyObject *self, PyObject *args, PyObject *keywords)
+{
+    int result;
+    int domain, serial;
+    char *keyword_list[] = {"domain", "serial", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, keywords,
+			"ii:indom_build", keyword_list,
+			&domain, &serial))
+	return NULL;
+    result = pmInDom_build(domain, serial);
     return Py_BuildValue("i", result);
 }
 
@@ -1392,7 +1428,11 @@ set_refresh_metrics(PyObject *self, PyObject *args)
 static PyMethodDef methods[] = {
     { .ml_name = "pmda_pmid", .ml_meth = (PyCFunction)pmda_pmid,
 	.ml_flags = METH_VARARGS|METH_KEYWORDS },
+    { .ml_name = "pmid_build", .ml_meth = (PyCFunction)pmid_build,
+	.ml_flags = METH_VARARGS|METH_KEYWORDS },
     { .ml_name = "pmda_indom", .ml_meth = (PyCFunction)pmda_indom,
+	.ml_flags = METH_VARARGS|METH_KEYWORDS },
+    { .ml_name = "indom_build", .ml_meth = (PyCFunction)indom_build,
 	.ml_flags = METH_VARARGS|METH_KEYWORDS },
     { .ml_name = "pmda_units", .ml_meth = (PyCFunction)pmda_units,
 	.ml_flags = METH_VARARGS|METH_KEYWORDS },

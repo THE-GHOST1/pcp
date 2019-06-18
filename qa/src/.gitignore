@@ -74,6 +74,7 @@ fetchrate_lite
 fetchrate_lite.c
 getconfig
 getcontexthost
+getdomainname
 getoptions
 getversion
 github-50
@@ -127,6 +128,9 @@ mmv2_nostats
 mmv2_simple
 mmv3_labels
 mmv3_simple
+mmv3_bad_labels
+mmv3_nostats
+mmv3_genstats
 multictx
 multifetch
 multithread0
@@ -199,6 +203,7 @@ rtimetest
 scale
 scanmeta
 semstr
+sha1int2ext
 slow_af
 sortinst
 spawn

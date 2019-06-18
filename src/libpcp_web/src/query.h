@@ -15,7 +15,7 @@
 #define SERIES_QUERY_H
 
 #include "pmapi.h"
-#include "series.h"
+#include "pmwebapi.h"
 
 /*
  * Time series querying
@@ -104,19 +104,13 @@ typedef struct node {
     /* partial match data for glob/regex */
     int			nmatches;
     sds			*matches;
+    void		*regex;	/* compiled regex */
     unsigned long long	cursor;
 } node_t;
 
 typedef struct timing {
     /* input string */
-    sds			deltas;
-    sds			aligns;
-    sds			starts;
-    sds			ends;
-    sds			ranges;
-    sds			counts;
-    sds			offsets;
-    sds			zones;
+    pmSeriesTimeWindow	window;
 
     /* parsed inputs */
     struct timeval	delta;	
@@ -134,8 +128,8 @@ typedef struct series {
     timing_t		time;
 } series_t;
 
-extern int series_solve(pmSeriesSettings *, node_t *, timing_t *, pmflags, void *);
-extern int series_load(pmSeriesSettings *, node_t *, timing_t *, pmflags, void *);
+extern int series_solve(pmSeriesSettings *, node_t *, timing_t *, pmSeriesFlags, void *);
+extern int series_load(pmSeriesSettings *, node_t *, timing_t *, pmSeriesFlags, void *);
 
 extern const char *series_instance_name(sds);
 extern const char *series_context_name(sds);

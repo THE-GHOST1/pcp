@@ -13,6 +13,7 @@ _usage()
     echo >&2
     echo >&2 "options:"
     echo >&2 "  -b branch           [defaults to master]"
+    echo >&2 "  -m                  don't launch mail client"
     echo >&2 "  -n                  dryrun"
     echo >&2 "  -r range            [defaults to \$(cat pushed.sha)..)]"
     echo >&2 "  -s                  short format, do not include commit messages"
@@ -30,12 +31,16 @@ then
 else
     range=''
 fi
-while getopts "b:nr:s?" c
+mail=true
+while getopts "b:mnr:s?" c
 do
     case $c
     in
 	b)
 	    branch="$OPTARG"
+	    ;;
+	m)	# don't launch mail client
+	    mail=false
 	    ;;
 	n)
 	    dryrun=true
@@ -189,8 +194,16 @@ do
 done
 if [ -f $tmp.y ]
 then
-    push="ssh://git@github.com/performancecopilot/pcp.git"
-    $GIT push --mirror $push
+    case `id -un`
+    in
+	kenj)
+	    echo "You're not trusted to do this ..."
+	    ;;
+	*)
+	    push="ssh://git@github.com/performancecopilot/pcp.git"
+	    $GIT push $push
+	    ;;
+    esac
 fi
 
 # remember last commit that was pushed ...
@@ -201,11 +214,21 @@ then
     echo "+ echo $sha >pushed.sha"
 else
     echo "$sha" >pushed.sha
-    case `id -un`
-    in
-	kenj)
-	    echo "To send commit mail ..."
-	    echo '$ sendcommitmail'
-	    ;;
-    esac
+    if $mail
+    then
+	case `id -un`
+	in
+	    kenj)
+		echo "And now send commit mail ..."
+		if [ `hostname` = bozo ]
+		then
+		    sendcommitmail
+		else
+		    echo "cut-n-paste from /tmp/msg into mail program and send to pcp@group.io"
+		fi
+		;;
+	esac
+    else
+	echo "cut-n-paste from /tmp/msg into mail program and send to pcp@group.io"
+    fi
 fi

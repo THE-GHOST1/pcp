@@ -172,21 +172,21 @@ do
 	    # may already be the base name of an archive ... look for
 	    # a .meta or .meta.* file
 	    #
-	    rm -f $tmp.ok
+	    rm -f $tmp/ok
 	    if [ -f "$base".meta ]
 	    then
-		touch $tmp.ok
+		touch $tmp/ok
 	    else
 		for suff in $compress_suffixes
 		do
 		    if [ -f "$base.meta"$suff ]
 		    then
-			touch $tmp.ok
+			touch $tmp/ok
 			break
 		    fi
 		done
 	    fi
-	    if [ ! -f $tmp.ok ]
+	    if [ ! -f $tmp/ok ]
 	    then
 		base=''
 		$verbose && echo "Warning: $try: not a PCP archive name"
@@ -252,15 +252,27 @@ do
     else
 	# empty output but non-zero exit status?
 	#
-	echo "Warning: $base: bad archive (pmlogcheck exit status=$sts), rewriting skipped"
+	echo "Warning: $base: bad archive (pmlogcheck exit status=$?), rewriting skipped"
 	continue
     fi
-    # use sum(1) to detect changes at the level of individual files
+    if `which sum >/dev/null 2>&1`
+    then
+	SUM=sum
+    elif `which cksum >/dev/null 2>&1`
+    then
+	SUM=cksum
+    else
+	# Using wc(1) is lame, but no real choice!
+	#
+	echo "Warning: can't find sum(1) or chksum(1)"
+	SUM="wc -c"
+    fi
+    # use sum(1) or cksum(1) to detect changes at the level of individual files
     #
     rm -f $tmp/sum.before
     for file in $archive.*
     do
-	echo "$file `sum "$file" | sed -e 's/[ 	][ 	]*/ /g'`" >>$tmp/sum.before
+	echo "$file `$SUM "$file" | sed -e 's/[ 	][ 	]*/ /g'`" >>$tmp/sum.before
     done
 
     eval pmlogrewrite $rewrite_args "$archive"
@@ -268,7 +280,7 @@ do
     rm -f $tmp/sum.after
     for file in $archive.*
     do
-	echo "$file `sum "$file" | sed -e 's/[ 	][ 	]*/ /g'`" >>$tmp/sum.after
+	echo "$file `$SUM "$file" | sed -e 's/[ 	][ 	]*/ /g'`" >>$tmp/sum.after
     done
     # now use comm to find the lines that are in $tmp/sum.after and not
     # in $tmp/sum.before ... these are the files that have been changed

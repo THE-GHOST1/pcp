@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014,2017-2018 Red Hat.
+ * Copyright (c) 2013-2014,2017-2019 Red Hat.
  * Copyright (c) 1995-2000 Silicon Graphics, Inc.  All Rights Reserved.
  * 
  * This library is free software; you can redistribute it and/or modify it
@@ -720,11 +720,7 @@ pmdaDesc(pmID pmid, pmDesc *desc, pmdaExt *pmda)
     pmdaMetric		*metric;
     char		strbuf[32];
     int			version;
-
-    if ((pmDebugOptions.libpmda) && (pmDebugOptions.desperate)) {
-	char	dbgbuf[20];
-	fprintf(stderr, "pmdaDesc(%s, ...) called\n", pmIDStr_r(pmid, dbgbuf, sizeof(dbgbuf)));
-    }
+    int			sts;
 
     version = extp->dispatch->comm.pmda_interface;
     if (version >= PMDA_INTERFACE_5)
@@ -739,14 +735,32 @@ pmdaDesc(pmID pmid, pmDesc *desc, pmdaExt *pmda)
 
     if (metric) {
 	*desc = metric->m_desc;
-	return 0;
+	sts = 0;
+    }
+    else {
+	sts = PM_ERR_PMID;
+	/* dynamic name metrics may often vanish, avoid log spam */
+	if (version < PMDA_INTERFACE_4)
+	    pmNotifyErr(LOG_ERR, "pmdaDesc: Requested metric %s is not defined",
+			    pmIDStr_r(pmid, strbuf, sizeof(strbuf)));
     }
 
-    /* dynamic name metrics may often vanish, avoid log spam */
-    if (version < PMDA_INTERFACE_4)
-	pmNotifyErr(LOG_ERR, "pmdaDesc: Requested metric %s is not defined",
-			pmIDStr_r(pmid, strbuf, sizeof(strbuf)));
-    return PM_ERR_PMID;
+    if ((pmDebugOptions.libpmda) && (pmDebugOptions.desperate)) {
+	char	dbgbuf[20];
+	fprintf(stderr, "pmdaDesc(%s, ...) method=", pmIDStr_r(pmid, dbgbuf, sizeof(dbgbuf)));
+	if (pmda->e_flags & PMDA_EXT_FLAG_HASHED)
+	    fprintf(stderr, "hashed");
+	else if (pmda->e_direct)
+	    fprintf(stderr, "direct");
+	else
+	    fprintf(stderr, "linear");
+	if (sts == 0)
+	    fprintf(stderr, " success\n");
+	else
+	    fprintf(stderr, " fail\n");
+    }
+
+    return sts;
 }
 
 /*
@@ -829,7 +843,7 @@ pmdaLabel(int ident, int type, pmLabelSet **lpp, pmdaExt *pmda)
 
     case PM_LABEL_ITEM:
 	if (pmDebugOptions.labels)
-	    fprintf(stderr, "pmdaLabel: cluster %s labels request\n",
+	    fprintf(stderr, "pmdaLabel: item %s labels request\n",
 			    pmIDStr_r(ident, idbuf, sizeof(idbuf)));
 	if ((lp = *lpp) == NULL)	/* no default handler */
 	    return 0;
@@ -852,8 +866,7 @@ pmdaLabel(int ident, int type, pmLabelSet **lpp, pmdaExt *pmda)
 	    return 0;
 
 	/* allocate minimally-sized chunk of contiguous memory upfront */
-	size = numinst * sizeof(pmLabelSet);
-	if ((lp = (pmLabelSet *)malloc(size)) == NULL)
+	if ((lp = (pmLabelSet *)calloc(numinst, sizeof(pmLabelSet))) == NULL)
 	    return -oserror();
 	*lpp = lp;
 
@@ -876,11 +889,13 @@ pmdaLabel(int ident, int type, pmLabelSet **lpp, pmdaExt *pmda)
 	    }
 	    memset(lp, 0, sizeof(*lp));
 
-	    if ((sts = (*(pmda->e_labelCallBack))(ident, inst, &lp)) < 0) {
-		pmInDomStr_r(ident, idbuf, sizeof(idbuf));
-		pmErrStr_r(sts, errbuf, sizeof(errbuf));
-		pmNotifyErr(LOG_DEBUG, "pmdaLabel: "
-				"InDom %s[%d]: %s\n", idbuf, inst, errbuf);
+	    if (pmda->e_labelCallBack != NULL) {
+		if ((sts = (*(pmda->e_labelCallBack))(ident, inst, &lp)) < 0) {
+		    pmInDomStr_r(ident, idbuf, sizeof(idbuf));
+		    pmErrStr_r(sts, errbuf, sizeof(errbuf));
+		    pmNotifyErr(LOG_DEBUG, "pmdaLabel: "
+				    "InDom %s[%d]: %s\n", idbuf, inst, errbuf);
+		}
 	    }
 	    if ((lp->nlabels = sts) > 0)
 		pmdaAddLabelFlags(lp, type);
@@ -922,6 +937,7 @@ pmdaAddLabels(pmLabelSet **lsp, const char *fmt, ...)
     char		buf[PM_MAXLABELJSONLEN];
     va_list		arg;
     int			sts;
+    int			flags = PM_LABEL_COMPOUND;
 
     va_start(arg, fmt);
     sts = vsnprintf(buf, sizeof(buf), fmt, arg);
@@ -934,7 +950,7 @@ pmdaAddLabels(pmLabelSet **lsp, const char *fmt, ...)
     if (pmDebugOptions.labels)
 	fprintf(stderr, "pmdaAddLabels: %s\n", buf);
 
-    if ((sts = __pmAddLabels(lsp, buf, 0)) < 0) {
+    if ((sts = __pmAddLabels(lsp, buf, flags)) < 0) {
 	pmNotifyErr(LOG_ERR, "pmdaAddLabels: %s (%s)\n", buf,
 		pmErrStr_r(sts, errbuf, sizeof(errbuf)));
     }
@@ -951,6 +967,7 @@ pmdaAddNotes(pmLabelSet **lsp, const char *fmt, ...)
     char		errbuf[PM_MAXERRMSGLEN];
     char		buf[PM_MAXLABELJSONLEN];
     va_list		arg;
+    int			flags = PM_LABEL_COMPOUND | PM_LABEL_OPTIONAL;
     int			sts;
 
     va_start(arg, fmt);
@@ -964,7 +981,7 @@ pmdaAddNotes(pmLabelSet **lsp, const char *fmt, ...)
     if (pmDebugOptions.labels)
 	fprintf(stderr, "pmdaAddNotes: %s\n", buf);
 
-    if ((sts = __pmAddLabels(lsp, buf, PM_LABEL_OPTIONAL)) < 0) {
+    if ((sts = __pmAddLabels(lsp, buf, flags)) < 0) {
 	pmNotifyErr(LOG_ERR, "pmdaAddNotes: %s (%s)\n", buf,
 		pmErrStr_r(sts, errbuf, sizeof(errbuf)));
     }

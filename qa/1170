@@ -12,6 +12,8 @@ echo "QA output created by $seq"
 
 _pmdabcc_check
 which curl >/dev/null 2>&1 || _notrun "No curl binary installed"
+[ "$(pmpython src/bcc_version_check.python)" = "0.6.1" ] \
+  && _notrun "Broken BCC version detected"
 
 target_ip=1.1.1.1
 
@@ -25,6 +27,7 @@ _stop_auto_restart pmcd
 
 # real QA test starts here
 cat <<EOF | _pmdabcc_install
+# Installed by PCP QA test $seq on `date`
 [pmda]
 modules = tcptop
 prefix = bcc.
